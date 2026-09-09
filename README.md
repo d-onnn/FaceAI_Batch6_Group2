@@ -1,0 +1,232 @@
+# FaceAI
+
+Contactless health screening from facial video using remote photoplethysmography (rPPG).
+
+**Collaboration:** NTU veNTUre × NHG Health × A\*STAR IHPC
+
+> This README is the **reproducibility record**. This project operates under IRB/DSRB
+> oversight, so every reported number must be traceable to a pinned environment.
+> Every version below was read back from the environment that was actually built —
+> not from what was intended. Environment built **2026-09-10**.
+
+---
+
+## 1. Detected hardware and OS
+
+| | |
+|---|---|
+| Machine | GIGABYTE AERO X16 1TH |
+| OS | Microsoft Windows 11 Home, 10.0.26200 (build 26200) |
+| Architecture | x86-64 (AMD64) |
+| CPU | AMD Ryzen AI 7 350 w/ Radeon 860M — 8 cores / 16 threads |
+| RAM | 31.1 GB |
+| GPU (discrete) | **NVIDIA GeForce RTX 5050 Laptop GPU**, 8 GB VRAM |
+| GPU compute capability | **sm_120 (Blackwell)** |
+| NVIDIA driver | 581.91 |
+| Driver max CUDA runtime | 13.0 |
+| GPU (integrated) | AMD Radeon 860M — unused (ROCm is Linux-only) |
+| System CUDA Toolkit | **none installed** (not required; wheels bundle their own runtime) |
+
+---
+
+## 2. Environment manager
+
+**Miniforge3 26.7.2-0** — `conda 26.7.2`, `mamba 2.9.0`, installed at `C:\Users\jc180\miniforge3`.
+
+Channel configuration is **`conda-forge` only**. The Anaconda `defaults` channel is not
+used anywhere, and the base environment contains no `conda-anaconda-tos` or
+`conda-anaconda-telemetry` packages.
+
+> **Licence note.** A pre-existing **Miniconda3** install (`conda 25.7.0`) was found at
+> `C:\Users\jc180\miniconda3`, configured with `channels: [defaults]` and carrying
+> `conda-anaconda-tos` / `conda-anaconda-telemetry`. Anaconda's terms require a paid
+> licence for organisations of 200+ people, explicitly including government bodies and
+> academic non-curriculum research — which covers NHG Health and A\*STAR IHPC.
+> **That installation was deliberately not used and not modified.** It remains on disk,
+> untouched, and is unrelated to this project.
+
+`uv 0.12.11` is also installed (`C:\Users\jc180\.local\bin`) and is on PATH.
+
+**Python: 3.12.14** (conda-forge, CPython).
+
+---
+
+## 3. PyTorch build and why
+
+```
+torch 2.14.0+cu130   torchvision 0.29.0+cu130   torchaudio 2.11.0+cu130
+index: https://download.pytorch.org/whl/cu130
+```
+
+**Why `cu130` specifically:**
+
+1. The RTX 5050 is **Blackwell, compute capability sm_120**. Blackwell requires a
+   **CUDA 12.8 or newer** build. A `cu126` wheel installs without complaint and then
+   fails at runtime with *"no kernel image is available for execution on the device"* —
+   its arch list stops at `sm_90`.
+2. The driver (581.91) reports a **maximum supported CUDA runtime of 13.0**, so `cu130`
+   is the exact match. `cu132` is also published, but using it would depend on CUDA
+   minor-version compatibility rather than a directly supported runtime, so the older
+   channel was chosen instead of touching the driver.
+3. **Verified empirically, not assumed:**
+   ```
+   torch.cuda.is_available()   -> True
+   torch.version.cuda          -> 13.0
+   device                      -> NVIDIA GeForce RTX 5050 Laptop GPU
+   compute capability          -> sm_120
+   torch.cuda.get_arch_list()  -> ['sm_75','sm_80','sm_86','sm_90','sm_100','sm_120']
+   ```
+   `sm_120` is present in the build's arch list, and a real GPU matmul returns finite
+   values.
+
+**No separate CUDA Toolkit is installed and none is needed** — the wheels bundle their
+own CUDA runtime and cuDNN. Only the NVIDIA driver is required.
+
+---
+
+## 4. Pinned versions
+
+Full pins: [`requirements.txt`](requirements.txt) (128 packages) and
+[`environment.yml`](environment.yml). [`pyproject.toml`](pyproject.toml) is the primary
+manifest and pins the direct dependencies. The headline versions:
+
+| Package | Version | Note |
+|---|---|---|
+| python | 3.12.14 | conda-forge |
+| numpy | **2.2.6** | deliberately pinned `<2.3` — see §5 |
+| scipy | 1.18.1 | `scipy.signal` is the rPPG workhorse |
+| pandas | **2.3.3** | downgraded from 3.0.5 by neurokit2 (`pandas<3`) |
+| matplotlib | 3.11.1 | |
+| scikit-learn | 1.9.0 | |
+| **opencv-contrib-python** | **5.0.0.93** | the *only* OpenCV variant — see §5 |
+| mediapipe | 1.0.1 | Tasks API |
+| torch | 2.14.0+cu130 | |
+| torchvision | 0.29.0+cu130 | |
+| torchaudio | 2.11.0+cu130 | |
+| heartpy | 1.2.7 | reports `__version__ == "Version 1.2.6"`; pip metadata says 1.2.7 |
+| neurokit2 | 0.2.13 | |
+| av (PyAV) | 18.1.0 | |
+| decord | 0.6.0 | works on Windows; last released 2021 |
+| imageio | 2.37.4 | |
+| imageio-ffmpeg | 0.6.0 | bundles its own ffmpeg 7.1 |
+| jupyterlab | 4.6.3 | |
+
+**System ffmpeg:** `9.0.1-full_build` (Gyan.FFmpeg via winget), installed under
+`%LOCALAPPDATA%\Microsoft\WinGet\Packages` — user scope, no elevation used.
+This build is GPL-3.0 (`--enable-gpl --enable-version3`); invoking it as a standalone
+CLI tool imposes no licence obligation on this project's own source, but that changes if
+the binary is ever redistributed as part of a bundle.
+Note `imageio-ffmpeg` ships a *separate* bundled ffmpeg 7.1 that it uses internally.
+
+**Model bundle:** `models/face_landmarker.task` — 3,758,596 bytes,
+`sha256 64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff`, from
+`https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`
+(the pinned `/1/` revision, not `/latest/`). It is **gitignored** — re-download it with
+the URL above and check the hash.
+
+---
+
+## 5. Decisions that deviate from the original setup spec
+
+Recorded because a reproducibility record is worthless if it hides its own judgement calls.
+
+**a) `opencv-contrib-python` instead of `opencv-python`.**
+MediaPipe 1.0.1 *hard-depends* on `opencv-contrib-python`. Installing `opencv-python`
+first and MediaPipe last would have left **two OpenCV variants** in the environment —
+the exact conflict the setup spec warns about. `opencv-contrib-python` is a strict
+superset of `opencv-python`: same full GUI build, so `cv2.imshow` and webcam capture are
+unaffected, plus the contrib modules. It is the single installed variant, asserted by
+`tests/verify_env.py`.
+
+**b) NumPy pinned `<2.3` — kept, though the stated rationale has expired.**
+PyTorch pulled in numpy 2.5.2; it was pinned back to 2.2.6 per spec. This is compatible
+with everything here (`opencv-contrib-python` needs `numpy>=2` with no ceiling,
+`mediapipe` is unbounded, `torch` declares no numpy requirement). The original
+`_ARRAY_API not found` ABI hazard no longer applies — every package in this stack now
+ships numpy-2.x-built wheels — but the pin costs nothing and was verified end to end.
+
+**c) pandas 2.3.3, not 3.x.** `neurokit2 0.2.13` requires `pandas<3`, so pandas was
+downgraded from 3.0.5 during the Phase 5 install. This is a resolver outcome, not a choice.
+
+**d) MediaPipe no longer has a protobuf conflict.** MediaPipe 1.0.1 declares no protobuf
+dependency at all, so the "install MediaPipe last so it wins the protobuf fight"
+rationale is obsolete. It was still installed last, which is harmless.
+
+**e) MediaPipe is no longer CPython-version-sensitive.** It now ships a single
+ABI-agnostic `mediapipe-1.0.1-py3-none-win_amd64.whl`, so it is not tied to a specific
+CPython release. Python 3.12 was kept regardless (numpy 2.5.x now requires `>=3.12`
+anyway), but the original "MediaPipe lags new CPython" justification no longer holds.
+
+**f) dlib / face_recognition deliberately not installed**, per spec. MediaPipe Face
+Landmarker covers rPPG ROI selection and needs no C++ toolchain.
+
+---
+
+## 6. Recreate this environment from scratch
+
+Assumes an NVIDIA GPU whose driver supports CUDA runtime 13.0 or newer. On different
+hardware, re-derive the PyTorch index URL rather than copying `cu130`.
+
+```powershell
+# 1. Miniforge (conda-forge only - do NOT use Anaconda/Miniconda)
+#    https://github.com/conda-forge/miniforge/releases  ->  Miniforge3-Windows-x86_64.exe
+.\Miniforge3-Windows-x86_64.exe /InstallationType=JustMe /RegisterPython=0 /S /D=%UserProfile%\miniforge3
+
+# 2. Environment
+mamba create -n faceai python=3.12 -y
+mamba activate faceai
+
+# 3. Everything else, exactly pinned
+pip install -r requirements.txt
+
+# 4. System ffmpeg (user scope, no admin)
+winget install Gyan.FFmpeg
+
+# 5. Face Landmarker model bundle
+curl -L -o models/face_landmarker.task ^
+  https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
+
+# 6. Verify
+python tests/verify_env.py
+```
+
+Conda-based alternative to steps 2–3: `mamba env create -f environment.yml`
+
+---
+
+## 7. Layout
+
+```
+faceai/
+├── data/            # datasets - GITIGNORED, never committed
+├── notebooks/
+├── src/faceai/
+├── configs/
+├── models/          # face_landmarker.task (gitignored) and model weights
+├── results/         # gitignored
+├── tests/           # verify_env.py
+├── pyproject.toml   # primary dependency manifest
+├── environment.yml  # conda fallback
+├── requirements.txt # pip fallback
+└── README.md
+```
+
+---
+
+## 8. Daily commands
+
+```powershell
+mamba activate faceai                 # activate
+python tests/verify_env.py            # verify the environment
+jupyter lab                           # launch JupyterLab
+```
+
+---
+
+## 9. Data handling
+
+`data/` and `results/` are gitignored and **must stay that way**. No patient or
+participant video, and no derived identifiable signal, may be committed to this
+repository. This environment is for public research datasets only.
+
+There is **no git remote** on this repository. If one is added it must be **private**.
