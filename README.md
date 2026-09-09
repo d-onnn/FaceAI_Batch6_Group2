@@ -172,25 +172,30 @@ hardware, re-derive the PyTorch index URL rather than copying `cu130`.
 #    https://github.com/conda-forge/miniforge/releases  ->  Miniforge3-Windows-x86_64.exe
 .\Miniforge3-Windows-x86_64.exe /InstallationType=JustMe /RegisterPython=0 /S /D=%UserProfile%\miniforge3
 
-# 2. Environment
+# 2. Initialise the shell, then OPEN A NEW SHELL (see section 8 - without this,
+#    conda/mamba are not on PATH and `mamba activate` fails)
+%UserProfile%\miniforge3\condabin\conda.bat init powershell
+%UserProfile%\miniforge3\Library\bin\mamba.exe shell init --shell powershell --root-prefix %UserProfile%\miniforge3
+
+# 3. Environment
 mamba create -n faceai python=3.12 -y
 mamba activate faceai
 
-# 3. Everything else, exactly pinned
+# 4. Everything else, exactly pinned
 pip install -r requirements.txt
 
-# 4. System ffmpeg (user scope, no admin)
+# 5. System ffmpeg (user scope, no admin)
 winget install Gyan.FFmpeg
 
-# 5. Face Landmarker model bundle
-curl -L -o models/face_landmarker.task ^
+# 6. Face Landmarker model bundle
+curl -L -o models\face_landmarker.task ^
   https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
 
-# 6. Verify
-python tests/verify_env.py
+# 7. Verify
+python tests\verify_env.py
 ```
 
-Conda-based alternative to steps 2–3: `mamba env create -f environment.yml`
+Conda-based alternative to steps 3–4: `mamba env create -f environment.yml`
 
 ---
 
@@ -215,10 +220,42 @@ faceai/
 
 ## 8. Daily commands
 
+These are **PowerShell**. Note that Windows PowerShell 5.1 does **not** support `&&` as
+a statement separator — use `;` or separate lines.
+
 ```powershell
 mamba activate faceai                 # activate
-python tests/verify_env.py            # verify the environment
+python tests\verify_env.py            # verify the environment
 jupyter lab                           # launch JupyterLab
+```
+
+`python tests\verify_env.py --no-camera` skips the webcam and landmarker checks, for
+headless runs or when nobody is sitting in front of the camera.
+
+### Shell initialisation (required once per machine)
+
+Miniforge was installed with `/RegisterPython=0` and no PATH modification, so `conda`
+and `mamba` are **not** on PATH by default and `mamba activate` will not work until the
+shell is initialised. This was done on this machine with:
+
+```powershell
+C:\Users\jc180\miniforge3\condabin\conda.bat init powershell
+C:\Users\jc180\miniforge3\Library\bin\mamba.exe shell init --shell powershell --root-prefix C:\Users\jc180\miniforge3
+C:\Users\jc180\miniforge3\condabin\conda.bat config --set auto_activate_base false
+```
+
+Both hooks write to `Documents\WindowsPowerShell\profile.ps1`. `conda init` alone gives
+you `conda activate` but **not** `mamba activate` — mamba 2.x needs its own `shell init`.
+Base auto-activation is deliberately left off, so a new shell starts with the system
+Python until you activate.
+
+**Open a new shell after initialising.** Until you do, `python` still resolves to the
+system interpreter (`C:\Python314\python.exe`) — never `pip install` into that one.
+
+### Without activating (always works, no shell setup)
+
+```powershell
+& "C:\Users\jc180\miniforge3\envs\faceai\python.exe" "C:\Users\jc180\faceai\tests\verify_env.py"
 ```
 
 ---
