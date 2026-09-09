@@ -223,7 +223,37 @@ jupyter lab                           # launch JupyterLab
 
 ---
 
-## 9. Data handling
+## 9. Verification status — 2026-09-10
+
+`python tests/verify_env.py` → **19 / 20 checks passed**.
+
+Passing: Python 3.12.14 in an isolated prefix; all 12 required imports; exactly one
+OpenCV variant; webcam device 0 capture (640×480, DirectShow backend); Face Landmarker
+loading `face_landmarker.task` and detecting **1 face / 478 landmarks** (468 face + 10
+iris) via the MediaPipe Tasks API.
+
+**The one failure is environmental, not a defect in this environment:**
+
+```
+[FAIL] Accelerator detected -- using device 'cpu'
+```
+
+The RTX 5050 was reported by Windows as **Code 45 — "not connected to the computer"**,
+along with its companion HDMI-audio functions, because the laptop was running **on
+battery**. NVIDIA Advanced Optimus powers the discrete GPU off the PCIe bus in that
+state, which also makes `nvidia-smi` fail with a misleading *"insufficient permissions"*
+error. Driver files were untouched throughout (`nvcuda.dll` 32.0.15.8191), no reboot
+occurred, and the failure is identical with `torch` imported alone — it is not an
+import-order conflict.
+
+Earlier in the same session, on AC power, this exact environment ran a real GPU matmul
+on `cuda:0` with `sm_120` confirmed present in `torch.cuda.get_arch_list()`. **Plug in
+the AC adapter and re-run to get 20/20.**
+
+Note that the verifier deliberately reports this as a FAIL rather than silently falling
+back to CPU, so a training run can never quietly land on the wrong device.
+
+## 10. Data handling
 
 `data/` and `results/` are gitignored and **must stay that way**. No patient or
 participant video, and no derived identifiable signal, may be committed to this
