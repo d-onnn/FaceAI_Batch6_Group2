@@ -49,8 +49,12 @@ dist/
 venv/
 .conda/
 
-# Derived artefacts, caches and experiment tracking - regenerable, never committed
-artifacts/
+# Derived artefacts, caches and experiment tracking - regenerable, never committed.
+# EXCEPTION: the split assignment is committed. It defines the experiment for the whole
+# team and holds no health data - only patient_id, step, camera, split and fold.
+artifacts/*
+!artifacts/splits.parquet
+!artifacts/splits.json
 mlruns/
 *.db
 

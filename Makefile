@@ -6,7 +6,7 @@
 
 PYTHON ?= python
 
-.PHONY: help verify hardware probe lock test audit eda
+.PHONY: help verify hardware probe lock test audit eda splits
 
 help:
 	@echo make verify   - environment verifier, webcam and face checks skipped
@@ -15,6 +15,7 @@ help:
 	@echo make test     - pytest - formats, targets and integrity audit
 	@echo make audit    - print the Phase 1 integrity checks
 	@echo make eda      - Phase 1 audit + EDA, write reports/01_eda.md and figures
+	@echo make splits   - Phase 2 subject-level splits, write artifacts/splits.parquet
 	@echo make lock     - re-record exact installed versions - run after EVERY install
 
 verify:
@@ -28,6 +29,9 @@ audit:
 
 eda:
 	$(PYTHON) -m faceai.eda
+
+splits:
+	$(PYTHON) -m faceai.splits
 
 hardware:
 	$(PYTHON) -m faceai.hardware

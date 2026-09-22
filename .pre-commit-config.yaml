@@ -1,0 +1,32 @@
+# Local hooks only: they run the pinned `faceai` env, need no network, and cannot
+# drift from env/lockfile.txt the way `additional_dependencies` versions would.
+#
+# COMMIT FROM AN ACTIVATED ENV (`mamba activate faceai`) - these hooks call whichever
+# `python` is on PATH, and the system interpreter has none of this installed.
+#
+# Install once per clone:  pre-commit install
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: python -m ruff check --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+
+      - id: ruff-format
+        name: ruff format --check
+        entry: python -m ruff format --check --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+
+      # The blocking gate. With 6 recordings per subject, a random split leaks identity
+      # and yields meaningless numbers, so this runs on EVERY commit - not just in CI.
+      - id: no-leakage
+        name: subject-level split leakage test
+        entry: python -m pytest tests/test_no_leakage.py -q
+        language: system
+        pass_filenames: false
+        always_run: true

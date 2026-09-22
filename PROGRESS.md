@@ -30,9 +30,23 @@ target × demographics correlation matrix. States which of the 11 targets actual
 - [x] `reports/01_eda.md` + 3 figures; 23 tests green; `make test | audit | eda`
 - [ ] Phase 2 gate: plan approval before any splitting code
 
-## Phase 2 — Subject-level splits + leakage tests (BLOCKING for all modelling)
+## Phase 2 — Subject-level splits + leakage tests (BLOCKING for all modelling) ✅
 DoD: `pytest tests/test_no_leakage.py` green; `artifacts/splits.parquet` written; a table of
 #subjects / #recordings per split and per camera/state.
+
+- [x] `src/faceai/splits.py` — seed 42, 20% held-out test, 5-fold `StratifiedGroupKFold`
+      grouped on `patient_id`, stratified on sex × (age≥25)
+- [x] **test 120 subjects / 720 recordings; dev 479 / 2871**; folds 95–96 subjects,
+      63–64 F / 31–33 M, 8–9 subjects aged 25+ in every fold
+- [x] `tests/test_no_leakage.py` — **12 tests green**, including two that confirm the guard
+      REJECTS deliberately leaked splits, and determinism vs the committed file
+- [x] `artifacts/splits.parquet` + `splits.json` committed (gitignore exception); provenance
+      records seed, sklearn version, exclusions, db.csv blob id and an assignment SHA-256
+- [x] `.pre-commit-config.yaml` — local hooks (ruff + the leakage test), installed
+- [x] `reports/02_splits.md`
+- [ ] Phase 3 gate: plan approval before any modelling
+
+**The held-out test set is SEALED until Phase 10.** No phase before it may read those rows.
 
 ## Phase 3 — Contact-PPG ceiling models
 DoD: `reports/03_ceiling.md` (target × [mean | demo-only | ours | paper] with CIs) plus an honest

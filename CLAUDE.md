@@ -118,3 +118,17 @@ Use `faceai.data.formats`; do not re-parse these by hand.
 - **Analysis unit**: labels are identical across the 3 cameras of a session (checked, 0/1200 vary),
   so statistics go per **session** (1197) or per **subject** (599) — never over the 3600 rows.
 - `view` collides with `pandas.Series.view`; always use bracket access on DataFrames.
+
+## Splits — 2026-09-23 (Phase 2). Binding on every later phase.
+
+- **Use `faceai.splits.load_splits()`. Never re-split.** Seed 42, 20% held-out test, 5-fold
+  `StratifiedGroupKFold` grouped on `patient_id`, stratified on sex × (age≥25).
+  test 120 subjects / 720 recordings; dev 479 / 2871; folds 95–96 subjects each.
+- **`assert_no_leakage(splits)` must pass before any model sees data.** `load_splits()` calls it
+  on the way in. `pytest tests/test_no_leakage.py` also runs as a pre-commit hook.
+- **The held-out test set is SEALED until Phase 10.** Use `fold_indices()` for CV; it never
+  returns test rows.
+- `artifacts/splits.parquet` + `splits.json` are COMMITTED (a `.gitignore` exception). If the
+  assignment SHA-256 in `splits.json` changes, the experiment changed — investigate, don't
+  regenerate blindly.
+- Commit from an activated env: the pre-commit hooks call whichever `python` is on PATH.
