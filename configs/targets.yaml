@@ -1,0 +1,176 @@
+# Canonical target mapping for MCD-rPPG (Group 2).
+#
+# EVERY column of db.csv is either mapped as a target or listed under `excluded`
+# with a reason - nothing is left implicit. Ranges are the paper's Table 2 (via the
+# Group 2 brief); `make audit` compares the real data against them.
+#
+# Tiers come from the brief and are binding on how results may be reported:
+#   A  defensible from PPG
+#   B  exploratory, expect confounding
+#   C  NOT clinically usable - must be labelled so in code, model cards and demo
+#
+# Verified 2026-09-23 against db.csv @ wengziheng/mcd_rppg 91b967a5.
+
+targets:
+  # ---- Tier A -------------------------------------------------------------
+  - name: respiratory_rate
+    column: respiratory
+    unit: breaths/min
+    tier: A
+    task: regression
+    available: true
+    clinical_range: [15.0, 24.0]
+    notes: >-
+      Counted by a physician, so the label is coarse (integer-valued) and its own
+      noise ceiling is high.
+
+  - name: age
+    column: age
+    unit: years
+    tier: A
+    task: regression
+    available: true
+    clinical_range: [18.0, 83.0]
+    notes: Cohort mean ~23 and strongly skewed young; see the generalisation caveat.
+
+  - name: arterial_stiffness
+    column: rigidity
+    unit: index (device-reported; the unit is not stated by the paper)
+    tier: A
+    task: regression
+    available: true
+    clinical_range: [1.75, 34.02]
+    notes: >-
+      Measured with an Eldar photoplethysmograph or BPLab volumetric sphygmography.
+      UNIT UNVERIFIED - do not present as a physical quantity until confirmed.
+
+  - name: sex
+    column: sex
+    unit: category (F/M)
+    tier: A
+    task: classification
+    available: true
+    clinical_range: null
+    notes: >-
+      Imbalanced: 399 F vs 201 M subjects. Report balanced accuracy/AUC, not raw
+      accuracy, since the paper's 0.61 constant baseline is just the majority class.
+
+  # ---- Tier B -------------------------------------------------------------
+  - name: spo2
+    column: saturation
+    unit: "%"
+    tier: B
+    task: regression
+    available: true
+    clinical_range: [86.0, 99.0]
+    notes: >-
+      RGB rPPG lacks the red/IR ratio-of-ratios of true oximetry. Skin-tone bias per
+      Sjoding NEJM 2020; ISO 80601-2-61:2017 wants ARMS <= 4.0% over SaO2 70-100%.
+      The observed range is also narrow, so variance is small relative to error.
+
+  - name: stress_psm25
+    column: stress
+    unit: score (PSM-25, as released)
+    tier: B
+    task: regression
+    available: true
+    clinical_range: [1.0, 7.52]
+    notes: >-
+      SCALE MISMATCH TO CHECK - a standard PSM-25 total runs to the tens/hundreds,
+      so this looks like a mean item score. Confirm before quoting units anywhere.
+
+  - name: bmi
+    column: bmi
+    unit: kg/m^2
+    tier: B
+    task: regression
+    available: true
+    clinical_range: [15.39, 47.03]
+    notes: Derivable from weight/height, which are also released.
+
+  # ---- Tier C: NOT clinically usable --------------------------------------
+  - name: hba1c
+    column: glycated_hemoglobin
+    unit: "%"
+    tier: C
+    task: regression
+    available: true
+    clinical_range: [3.4, 13.02]
+    notes: >-
+      Finger-prick EasyTouch. Distinct from the plain `hemoglobin` column. Paper
+      Table 5: constant 0.43 vs model 0.41 - barely better than the mean.
+
+  - name: cholesterol
+    column: cholesterol
+    unit: mmol/L
+    tier: C
+    task: regression
+    available: true
+    clinical_range: [0.9, 8.0]
+    notes: "Finger-prick EasyTouch. Paper Table 5: constant 0.66 vs model 0.60."
+
+  - name: temperature
+    column: temperature
+    unit: degC
+    tier: C
+    task: regression
+    available: true
+    clinical_range: [36.0, 37.5]
+    notes: >-
+      Non-contact thermometer. ABSENT from paper Table 5 even though the labels
+      exist, so there is no published baseline to compare against. The range is
+      only 1.5 degC wide, so a constant predictor is extremely strong.
+
+  - name: glucose
+    column: null
+    unit: mmol/L
+    tier: C
+    task: regression
+    available: false
+    clinical_range: null
+    notes: >-
+      NOT AVAILABLE. The dataset card lists glucose among "13 health biomarkers"
+      and the paper says it was measured with an EasyTouch 2 analyser, but db.csv
+      has NO glucose column (verified 2026-09-23, all 25 columns). It cannot be
+      modelled or evaluated. Do not impute, substitute or infer it.
+
+# Columns that are NOT targets. Kept explicit so nothing is silently ignored.
+excluded:
+  - column: patient_id
+    reason: Subject identifier and the ONLY valid grouping key for splits.
+  - column: weight
+    reason: Demographic input (kg); a BMI component, not a Group-2 target.
+  - column: height
+    reason: Demographic input (cm); a BMI component, not a Group-2 target.
+  - column: upper_ap
+    reason: >-
+      Systolic BP. Excluded as a target per 2023 ESH (Stergiou, PMID 37303198) and
+      2025 AHA/ACC guidance against cuffless BP. Permitted as an auxiliary INPUT only.
+  - column: lower_ap
+    reason: Diastolic BP. Excluded as a target for the same reason as upper_ap.
+  - column: hemoglobin
+    reason: >-
+      A 14th biomarker (8.1-17.3), not in the fixed Group-2 target list. Distinct
+      from glycated_hemoglobin. Do not add it.
+  - column: pulse
+    reason: >-
+      Heart rate (49-153). Not a Group-2 target; used ONLY as a reference to
+      sanity-check HR derived from the PPG waveform.
+  - column: step
+    reason: Experimental factor - before (rest) / after (15 squats in 30 s).
+  - column: camera
+    reason: Experimental factor - FullHDwebcam / USBVideo / IriunWebcam.
+  - column: view
+    reason: >-
+      Experimental factor - front/left/right, 1:1 with camera. NOTE `view` collides
+      with pandas Series.view; always use bracket access.
+  - column: ecg
+    reason: Relative path to the 500 Hz 12-lead ECG JSON.
+  - column: ppg
+    reason: Relative path to the raw contact pulse-wave file.
+  - column: video
+    reason: Relative path to the .avi recording.
+  - column: meta
+    reason: Relative path to the per-frame timestamp file.
+  - column: ppg_sync
+    reason: Relative path to the video-synchronised PPG text file.

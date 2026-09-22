@@ -18,9 +18,17 @@ checks, show the output, and move on only once they pass **and** the lead approv
       **No video downloaded.** Option B (frontal video, +58.2 GB) is deferred until Phase 3 shows
       whether any target carries signal even from clean contact PPG.
 
-## Phase 1 — Data audit + EDA
+## Phase 1 — Data audit + EDA ✅
 DoD: `reports/01_eda.md` with the format-confirmation table, `configs/targets.yaml`, and the
 target × demographics correlation matrix. States which of the 11 targets actually have labels.
+
+- [x] Option A downloaded and verified: 9,603 files, 0 missing, 0 unexpected, no video
+- [x] All 5 formats opened and confirmed (`src/faceai/data/formats.py`) + 3 sample videos
+- [x] `configs/targets.yaml` + `faceai.targets` — **10 of 11 targets have labels; glucose has none**
+- [x] Integrity audit (`faceai.data.audit`): paths, ranges, label-constancy, flat-line scan
+- [x] **Exclusions**: subject 4952 entirely; subject 7412's `after` session → 599 subjects
+- [x] `reports/01_eda.md` + 3 figures; 23 tests green; `make test | audit | eda`
+- [ ] Phase 2 gate: plan approval before any splitting code
 
 ## Phase 2 — Subject-level splits + leakage tests (BLOCKING for all modelling)
 DoD: `pytest tests/test_no_leakage.py` green; `artifacts/splits.parquet` written; a table of

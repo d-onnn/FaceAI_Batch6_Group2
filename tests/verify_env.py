@@ -129,7 +129,9 @@ def check_accelerator() -> None:
         return
 
     cuda = torch.cuda.is_available()
-    mps = bool(getattr(torch.backends, "mps", None)) and torch.backends.mps.is_available()
+    mps = (
+        bool(getattr(torch.backends, "mps", None)) and torch.backends.mps.is_available()
+    )
     print(f"  torch.cuda.is_available()         = {cuda}")
     print(f"  torch.backends.mps.is_available() = {mps}")
     print(f"  torch.version.cuda                = {torch.version.cuda}")
@@ -138,7 +140,9 @@ def check_accelerator() -> None:
         idx = torch.cuda.current_device()
         cap = torch.cuda.get_device_capability(idx)
         arch_list = torch.cuda.get_arch_list()
-        print(f"  device name                       = {torch.cuda.get_device_name(idx)}")
+        print(
+            f"  device name                       = {torch.cuda.get_device_name(idx)}"
+        )
         print(f"  compute capability                = sm_{cap[0]}{cap[1]}")
         print(f"  arch list in this build           = {arch_list}")
         record(
@@ -193,7 +197,11 @@ def check_webcam():
                 frame = f
         cap.release()
         if frame is not None:
-            record("Webcam device 0 -> one frame", True, f"backend {label}, shape {frame.shape}")
+            record(
+                "Webcam device 0 -> one frame",
+                True,
+                f"backend {label}, shape {frame.shape}",
+            )
             return frame
         print(f"  {label}: opened but returned no frame")
 
@@ -213,7 +221,11 @@ def check_landmarker(frame) -> None:
     if not MODEL_PATH.exists():
         record("face_landmarker.task present", False, f"missing at {MODEL_PATH}")
         return
-    record("face_landmarker.task present", True, f"{MODEL_PATH.stat().st_size / 1e6:.2f} MB")
+    record(
+        "face_landmarker.task present",
+        True,
+        f"{MODEL_PATH.stat().st_size / 1e6:.2f} MB",
+    )
 
     if frame is None:
         record("Face detected in webcam frame", False, "no frame available from step 4")
@@ -287,7 +299,10 @@ def main() -> int:
     section("SUMMARY")
     failed = [name for name, ok, _ in results if not ok]
     for name, ok, detail in results:
-        print(f"  {'PASS' if ok else 'FAIL'}  {name}" + (f"  ({detail})" if detail else ""))
+        print(
+            f"  {'PASS' if ok else 'FAIL'}  {name}"
+            + (f"  ({detail})" if detail else "")
+        )
     print()
     print(f"  {len(results) - len(failed)}/{len(results)} checks passed")
     if failed:
