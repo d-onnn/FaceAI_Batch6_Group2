@@ -13,7 +13,10 @@ checks, show the output, and move on only once they pass **and** the lead approv
 - [x] `env/hardware.json` recorded **on AC power** — `cuda` / RTX 5050 / sm_120, no warnings
 - [x] `reports/00_access.md` — cc-by-4.0, 135.18 GB, `db.csv` 3600×25, **glucose absent**
 - [x] DoD run + local commit (no remote)
-- [ ] **GATE — download plan go / no-go (Joshua).** No video before this.
+- [x] **GATE — download plan approved by Joshua on 2026-09-23: option A, non-video only.**
+      9,603 files / 5.33 GB (`ppg/`, `ppg_sync/`, `ecg/`, `meta/`, `db.csv`) for all 600 subjects.
+      **No video downloaded.** Option B (frontal video, +58.2 GB) is deferred until Phase 3 shows
+      whether any target carries signal even from clean contact PPG.
 
 ## Phase 1 — Data audit + EDA
 DoD: `reports/01_eda.md` with the format-confirmation table, `configs/targets.yaml`, and the

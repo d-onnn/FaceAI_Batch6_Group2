@@ -7,9 +7,10 @@ are the same bytes. See reports/00_access.md for why this repo and this commit.
 from __future__ import annotations
 
 import hashlib
+from fnmatch import fnmatch
 from pathlib import Path
 
-from huggingface_hub import HfApi, hf_hub_download
+from huggingface_hub import HfApi, hf_hub_download, snapshot_download
 from huggingface_hub.hf_api import DatasetInfo, RepoSibling
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -45,17 +46,8 @@ def git_blob_id(path: Path) -> str:
     return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
 
 
-def fetch(
-    filenames: list[str],
-    *,
-    allow_video: bool = False,
-    max_bytes: int = MAX_BYTES_WITHOUT_APPROVAL,
-) -> list[Path]:
-    """Download named files at the pinned revision into data/mcd_rppg/.
-
-    Refuses video unless allow_video=True, and refuses more than max_bytes in total.
-    Raising either limit is a decision for the project lead, not a default.
-    """
+def _guard(filenames: list[str], allow_video: bool, max_bytes: int) -> int:
+    """Enforce the two project rules: no video by default, nothing over max_bytes."""
     if not allow_video and (bad := [f for f in filenames if f.startswith("video/")]):
         raise PermissionError(
             f"refusing to fetch video without allow_video=True: {bad[:3]}"
@@ -69,6 +61,54 @@ def fetch(
             f"{total / 1e9:.2f} GB requested exceeds the {max_bytes / 1e9:.2f} GB limit; "
             "get approval, then pass max_bytes explicitly"
         )
+    return total
+
+
+def matching(patterns: list[str]) -> list[str]:
+    """Repo files matching any glob, e.g. ['ppg/*', 'db.csv']."""
+    return [
+        s.rfilename
+        for s in info().siblings or []
+        if any(fnmatch(s.rfilename, p) for p in patterns)
+    ]
+
+
+def fetch_patterns(
+    patterns: list[str],
+    *,
+    allow_video: bool = False,
+    max_bytes: int = MAX_BYTES_WITHOUT_APPROVAL,
+    max_workers: int = 8,
+) -> Path:
+    """Download every file matching `patterns`, in parallel, at the pinned revision.
+
+    Resumable: files already present and complete are skipped. Same guards as fetch().
+    """
+    total = _guard(matching(patterns), allow_video, max_bytes)
+    print(f"fetching {patterns} = {total / 1e9:.2f} GB from {REPO_ID}@{REVISION[:8]}")
+    snapshot_download(
+        REPO_ID,
+        repo_type=REPO_TYPE,
+        revision=REVISION,
+        local_dir=LOCAL_DIR,
+        allow_patterns=patterns,
+        max_workers=max_workers,
+    )
+    return LOCAL_DIR
+
+
+def fetch(
+    filenames: list[str],
+    *,
+    allow_video: bool = False,
+    max_bytes: int = MAX_BYTES_WITHOUT_APPROVAL,
+) -> list[Path]:
+    """Download named files at the pinned revision into data/mcd_rppg/.
+
+    Refuses video unless allow_video=True, and refuses more than max_bytes in total.
+    Raising either limit is a decision for the project lead, not a default.
+    """
+    _guard(filenames, allow_video, max_bytes)
     return [
         Path(
             hf_hub_download(
