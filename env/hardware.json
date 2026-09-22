@@ -1,0 +1,93 @@
+{
+  "generated": "2026-09-23T01:39:45+08:00",
+  "os": "Windows 11 (10.0.26200)",
+  "machine": "AMD64",
+  "python": "3.12.14",
+  "cpu": {
+    "name": "AMD Ryzen AI 7 350 w/ Radeon 860M",
+    "physical_cores": 8,
+    "logical_cores": 16
+  },
+  "ram_gib": 31.1,
+  "disk": {
+    "path": "C:\\Users\\jc180\\faceai",
+    "free_gb": 246.8,
+    "total_gb": 959.2
+  },
+  "power": {
+    "ac_plugged": true,
+    "battery_percent": 53
+  },
+  "display_devices": [
+    {
+      "FriendlyName": "AMD Radeon(TM) Graphics",
+      "Status": "OK"
+    },
+    {
+      "FriendlyName": "NVIDIA GeForce RTX 5050 Laptop GPU",
+      "Status": "OK"
+    }
+  ],
+  "nvidia_smi": {
+    "available": true,
+    "name": "NVIDIA GeForce RTX 5050 Laptop GPU",
+    "driver": "581.91",
+    "memory_total": "8151 MiB",
+    "driver_max_cuda_runtime": "13.0"
+  },
+  "torch": {
+    "version": "2.14.0+cu130",
+    "built_cuda": "13.0",
+    "cuda_available": true,
+    "mps_available": false,
+    "device_name": "NVIDIA GeForce RTX 5050 Laptop GPU",
+    "compute_capability": "sm_120",
+    "arch_list": [
+      "sm_75",
+      "sm_80",
+      "sm_86",
+      "sm_90",
+      "sm_100",
+      "sm_120"
+    ],
+    "vram_gib": 8.0
+  },
+  "device_policy": {
+    "order": [
+      "cuda",
+      "mps",
+      "cpu"
+    ],
+    "selected": "cuda"
+  },
+  "subset_plan": {
+    "source": "wengziheng/mcd_rppg@91b967a5f2bab735d35f81722ff95e629358753b",
+    "subjects_total": 600,
+    "nonvideo_gb_all_subjects": 5.33,
+    "video_gb_per_subject_all_cameras": 0.216,
+    "video_gb_per_subject_frontal": 0.097,
+    "disk_headroom_gb": 50,
+    "tiers": {
+      "smoke": {
+        "subjects": 25,
+        "gb_all_cameras": 10.7,
+        "gb_frontal_only": 7.8,
+        "fits_with_headroom": true
+      },
+      "dev": {
+        "subjects": 100,
+        "gb_all_cameras": 27.0,
+        "gb_frontal_only": 15.0,
+        "fits_with_headroom": true
+      },
+      "full": {
+        "subjects": 600,
+        "gb_all_cameras": 135.2,
+        "gb_frontal_only": 63.5,
+        "fits_with_headroom": true
+      }
+    },
+    "selection_rule": "subject-level only; the exact subset is fixed with the Phase 2 splits"
+  },
+  "warnings": []
+}

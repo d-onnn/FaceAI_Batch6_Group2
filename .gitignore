@@ -43,10 +43,16 @@ dist/
 .eggs/
 
 # Environments
+# (No bare `env/` rule: env/ holds the committed environment record -
+#  lockfile.txt and hardware.json - not a virtualenv.)
 .venv/
 venv/
-env/
 .conda/
+
+# Derived artefacts, caches and experiment tracking - regenerable, never committed
+artifacts/
+mlruns/
+*.db
 
 # Notebooks
 .ipynb_checkpoints/

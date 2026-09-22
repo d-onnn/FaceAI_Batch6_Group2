@@ -48,12 +48,31 @@ dependencies = [
     "decord==0.6.0",
     "imageio==2.37.4",
     "imageio-ffmpeg==0.6.0",
+
+    # --- Group 2: tabular models, conformal intervals, data, tracking, demo ---
+    # (added Phase 0, 2026-09-22; resolved with the core above frozen - 0 changes)
+    "pyarrow==25.0.1",
+    "lightgbm==4.7.0",
+    "xgboost==3.4.1",
+    "catboost==1.2.10",
+    "mapie==1.5.0",
+    "mlflow==3.16.1",
+    "gradio==6.28.0",
+    "huggingface_hub==1.32.0",
+    "hf-xet==1.6.0",
+    "pydantic==2.13.5",
+    "PyYAML==6.0.3",
 ]
 
 [project.optional-dependencies]
 notebook = [
     "jupyterlab==4.6.3",
     "ipykernel==7.3.0",
+]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.16.8",
+    "pre-commit==4.6.2",
 ]
 
 [tool.uv.sources]

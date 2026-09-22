@@ -36,6 +36,18 @@ PACKAGES = [
     ("neurokit2", "__version__"),
     ("av", "__version__"),
     ("imageio", "__version__"),
+    # Group 2 stack (added Phase 0, 2026-09-22)
+    ("pyarrow", "__version__"),
+    ("lightgbm", "__version__"),
+    ("xgboost", "__version__"),
+    ("catboost", "__version__"),
+    ("mapie", "__version__"),
+    ("gradio", "__version__"),
+    ("mlflow", "__version__"),
+    ("huggingface_hub", "__version__"),
+    ("pydantic", "__version__"),
+    ("yaml", "__version__"),
+    ("pytest", "__version__"),
 ]
 
 results: list[tuple[str, bool, str]] = []

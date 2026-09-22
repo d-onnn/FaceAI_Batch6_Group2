@@ -124,6 +124,39 @@ Note `imageio-ffmpeg` ships a *separate* bundled ffmpeg 7.1 that it uses interna
 (the pinned `/1/` revision, not `/latest/`). It is **gitignored** — re-download it with
 the URL above and check the hash.
 
+### 4a. Group 2 additions — 2026-09-22
+
+Added for the Group 2 biomarker work, resolved with every package above **frozen** by a
+constraints file: the dry run and the post-install diff both showed 92 new packages and
+**0 changes** to existing ones.
+
+| Package | Version | | Package | Version |
+|---|---|---|---|---|
+| lightgbm | 4.7.0 | | mlflow | 3.16.1 |
+| xgboost | 3.4.1 | | gradio | 6.28.0 |
+| catboost | 1.2.10 | | huggingface_hub | 1.32.0 (+ hf-xet 1.6.0) |
+| mapie | 1.5.0 | | pyarrow | 25.0.1 |
+| pydantic | 2.13.5 | | PyYAML | 6.0.3 |
+| pytest / ruff / pre-commit | 9.1.1 / 0.16.8 / 4.6.2 | | make (conda-forge) | 4.4.1 |
+
+- **The full record is now [`env/lockfile.txt`](env/lockfile.txt)** (`pip freeze` +
+  `conda list --explicit`). Regenerate it, `requirements.txt` and `environment.yml` from
+  the live env after **every** install with `python -m faceai.lockfile` (or `make lock`).
+- The project itself is installed editable (`pip install -e . --no-deps`), so
+  `python -m faceai.…` works from anywhere. The lockfile generator excludes it from the pins.
+- **Telemetry is off** for Hugging Face Hub, Gradio and MLflow (`HF_HUB_DISABLE_TELEMETRY=1`,
+  `GRADIO_ANALYTICS_ENABLED=False`, `MLFLOW_DISABLE_TELEMETRY=true`, `DO_NOT_TRACK=true`). These
+  are set as conda env vars on `faceai`, and as defaults in `faceai/__init__.py` for runs
+  that don't activate the env. Names were checked against the installed sources.
+- **MLflow uses a local SQLite store** (`artifacts/mlflow/mlflow.db`). MLflow 3.16 raises an
+  error by default on a local *file* store, and SQLite is its default backend now. It is
+  still local-only.
+- **MAPIE 1.x has a new API** (`SplitConformalRegressor` / `CrossConformalRegressor`, not
+  0.x's `MapieRegressor`). It supports Python 3.12.
+- `make` comes from conda-forge because Windows doesn't ship it. `libgomp` came in with it;
+  torch, LightGBM, XGBoost and CatBoost were checked to load and fit in one process with no
+  OpenMP conflict.
+
 ---
 
 ## 5. Decisions that deviate from the original setup spec
