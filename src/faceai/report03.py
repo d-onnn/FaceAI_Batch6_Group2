@@ -766,7 +766,7 @@ def fig_noise(noise: pd.DataFrame, feat: pd.DataFrame) -> str:
     fig.text(
         0.5,
         0.02,
-        "In-band SNR of the injected noise, dB  (left = clean contact PPG; right = noisier than typical camera rPPG)",
+        "In-band SNR of the injected noise, dB  (left = clean contact PPG; right = so noisy that heart rate itself is lost)",
         ha="center",
         fontsize=8.5,
         color=INK2,
@@ -1059,7 +1059,8 @@ def main() -> None:
         f"  ({ci(res['age']['models']['Median'])}) the CIs overlap, because age is so skewed (cohort median 20).",
         "- **Arterial stiffness and respiratory rate** improve on demographics on the paired test but",
         "  not under the brief's strict rule — promising, not established.",
-        "- **BMI:** demographics (age + sex) already beat the constant; PPG adds nothing on top.",
+        "- **BMI:** demographics (age + sex) beat the constant on the paired test, not the strict rule;",
+        "  PPG adds nothing on top of them.",
         "- **HbA1c, cholesterol, SpO₂, stress, temperature:** nothing beats a constant guess. For",
         "  HbA1c the best model is within 0.003 of the mean predictor.",
         "",

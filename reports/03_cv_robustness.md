@@ -1,6 +1,6 @@
 # Phase 3 — Contact-PPG 5-fold cross-validation, overfitting and robustness
 
-_Generated 2026-10-12T21:42:48+08:00 by `python -m faceai.report03` from saved artifacts only._
+_Generated 2026-10-12T21:50:14+08:00 by `python -m faceai.report03` from saved artifacts only._
 
 **Scope.** Contact PPG only (the .PW finger signal) — the best-case signal, before any
 camera is involved. No video, no rPPG (Phase 4 has not started). Dev folds only: the 120
@@ -71,7 +71,8 @@ Paper Table 5 numbers are context only: a different split and test set, and a vi
   (4.033 [3.147–4.958]) the CIs overlap, because age is so skewed (cohort median 20).
 - **Arterial stiffness and respiratory rate** improve on demographics on the paired test but
   not under the brief's strict rule — promising, not established.
-- **BMI:** demographics (age + sex) already beat the constant; PPG adds nothing on top.
+- **BMI:** demographics (age + sex) beat the constant on the paired test, not the strict rule;
+  PPG adds nothing on top of them.
 - **HbA1c, cholesterol, SpO₂, stress, temperature:** nothing beats a constant guess. For
   HbA1c the best model is within 0.003 of the mean predictor.
 
@@ -312,7 +313,7 @@ The 44 dev subjects aged 25 or over are much harder to predict:
 - Cholesterol: mean-predictor MAE 1.090 for age ≥ 25 vs 0.600 for < 25 (1.8×); the older group is 9.2% of sessions but 15.5% of the total error.
 
 No model closes that gap: their labels sit far from a young cohort's mean, and the
-PPG features do not recover where.
+PPG features do not tell the models which way an older subject deviates.
 
 ### Stability across a person's two sessions
 

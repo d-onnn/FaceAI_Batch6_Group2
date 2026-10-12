@@ -28,9 +28,9 @@ Noise injection (robustness test): Gaussian noise band-limited to the pulse band
 that the IN-BAND SNR - pulsatile power over added-noise power, both within 0.5-8 Hz - is
 exactly the stated level. White noise was tried first and rejected: across 0-50 Hz only
 ~15% of its power lands in the pulse band, so even a nominal 0 dB moved heart rate by
-<0.4 bpm and the test exercised nothing. In-band levels from +20 to -10 dB bracket the
-range reported for camera rPPG. Every draw is seeded from (SEED, subject, state, SNR), so
-results reproduce exactly.
+<0.4 bpm and the test exercised nothing. Levels run from +20 dB (near-clean) to -10 dB,
+where heart rate itself is lost. Every draw is seeded from (SEED, subject, state, SNR),
+so results reproduce exactly.
 """
 
 from __future__ import annotations
