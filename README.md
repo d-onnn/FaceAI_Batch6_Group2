@@ -11,6 +11,41 @@ Contactless health screening from facial video using remote photoplethysmography
 
 ---
 
+## Group 2 pipeline at a glance
+
+![Group 2 pipeline](reports/figures/03_pipeline.png)
+
+Phases 0–3 are complete; Phase 4 (rPPG from video) has not started. The dataset is **not**
+in this repository. MCD-rPPG (Egorov et al., ACM MM 2025, doi:10.1145/3746027.3758255,
+CC-BY-4.0) is gated on Hugging Face: accept the gate, run `hf auth login`, then fetch the
+same non-video files used here (9,603 files, 5.33 GB) at the pinned revision:
+
+```python
+from faceai.data.hub import fetch_patterns
+fetch_patterns(["README.md", "readme.txt", "db.csv", "ppg/*", "ppg_sync/*", "ecg/*", "meta/*"],
+               max_bytes=6_000_000_000)
+```
+
+Then, from the activated environment, every number and figure in `reports/` is rebuilt by:
+
+```
+make splits    # Phase 2: subject-level splits (also committed in artifacts/)
+make test      # 56 tests, including the subject-leakage guard
+make phase3    # Phase 3: features, 5-fold CV, overfitting diagnostics, robustness, report
+```
+
+| Report | Contents |
+|---|---|
+| [`reports/00_access.md`](reports/00_access.md) | Dataset access probe: source, licence, schema, sizes |
+| [`reports/01_eda.md`](reports/01_eda.md) | File formats, integrity audit, exclusions, label EDA |
+| [`reports/02_splits.md`](reports/02_splits.md) | Subject-level splits and the leakage guarantee |
+| [`reports/03_cv_robustness.md`](reports/03_cv_robustness.md) | Contact-PPG 5-fold CV, overfitting diagnostics, robustness tests |
+
+Binding project rules are in [`CLAUDE.md`](CLAUDE.md); the phase checklist is in
+[`PROGRESS.md`](PROGRESS.md).
+
+---
+
 ## 1. Detected hardware and OS
 
 | | |
@@ -329,4 +364,7 @@ back to CPU, so a training run can never quietly land on the wrong device.
 participant video, and no derived identifiable signal, may be committed to this
 repository. This environment is for public research datasets only.
 
-There is **no git remote** on this repository. If one is added it must be **private**.
+The original setup rule was that any git remote must be **private**. On 2026-10-12 the
+team chose a **public** repository instead: https://github.com/d-onnn/FaceAI_Batch6_Group2.
+That makes the rules above absolute. Only code, configs, aggregate reports and the
+subject-ID split assignment are committed; datasets, signals and results never are.
