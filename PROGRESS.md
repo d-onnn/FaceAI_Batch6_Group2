@@ -44,13 +44,31 @@ DoD: `pytest tests/test_no_leakage.py` green; `artifacts/splits.parquet` written
       records seed, sklearn version, exclusions, db.csv blob id and an assignment SHA-256
 - [x] `.pre-commit-config.yaml` — local hooks (ruff + the leakage test), installed
 - [x] `reports/02_splits.md`
-- [ ] Phase 3 gate: plan approval before any modelling
+- [x] Phase 3 gate: plan approved by Joshua on 2026-10-12 ("Resume"). The optional leakage
+      demonstration (a deliberately random split) was NOT approved and was not run.
 
 **The held-out test set is SEALED until Phase 10.** No phase before it may read those rows.
 
-## Phase 3 — Contact-PPG ceiling models
+## Phase 3 — Contact-PPG ceiling models ✅
 DoD: `reports/03_ceiling.md` (target × [mean | demo-only | ours | paper] with CIs) plus an honest
 paragraph on which targets carry real signal even from clean contact PPG.
+
+Delivered as `reports/03_cv_robustness.md` (the DoD table is its section 3), extended for the
+2026-10-12 meeting with overfitting diagnostics, robustness tests and a pipeline diagram.
+
+- [x] `faceai.features` — 17 contact-PPG features per dev session (957; 956 readable), plus
+      copies at 6 in-band SNR levels (+20 … −10 dB); `make features`
+- [x] `faceai.cv` — 5-fold CV on the committed folds: mean / median / demographics baselines,
+      Ridge, Lasso, LightGBM tuned by inner GroupKFold; subject-cluster bootstrap CIs; `make cv`
+- [x] `faceai.diagnostics` — regularisation paths, boosting curve, learning curves
+- [x] `faceai.robustness` — noise injection, rest→exercise shift, subgroups, stability
+- [x] `faceai.report03` — report + 9 figures, every number read from saved artifacts
+- [x] `tests/test_features.py`, `tests/test_cv.py` — 56 tests green in total
+- [x] Verdict (strict brief rule): only the age positive control beats both baselines.
+      Arterial stiffness and respiratory rate pass the paired test only. HbA1c, cholesterol,
+      SpO₂, stress and temperature do not beat a constant.
+- Not done: adversarial testing (deferred to Phase 8 deep models); the APG c/d/e waves and
+  aging index (unvalidated at 100 Hz / 8-bit; Phase 5).
 
 ## Phase 4 — rPPG extraction + signal quality (cached, resumable)
 DoD: `reports/04_rppg.md` with rPPG-vs-contact HR MAE by camera/state and SQI distributions; a

@@ -132,3 +132,28 @@ Use `faceai.data.formats`; do not re-parse these by hand.
   assignment SHA-256 in `splits.json` changes, the experiment changed — investigate, don't
   regenerate blindly.
 - Commit from an activated env: the pre-commit hooks call whichever `python` is on PATH.
+
+## Verified facts — 2026-10-12 (Phase 3). These CORRECT the sections above.
+
+- **The raw `.PW` waveform is INVERTED.** Median trough-to-peak 0.545 s vs peak-to-trough
+  0.140 s on 40 dev sessions, the reverse of a real pulse in every one. Use
+  `faceai.features.load_session_ppg` (returns `255 - raw`). Rate features are unaffected;
+  beat-shape features are wrong without the flip.
+- **`ppg/8706_after.PW` is write-corrupted** (merged timestamp, a NUL-byte run, truncated last
+  line, clock jumps back 18 s). It is left out of the features, never repaired. All other
+  1,199 `.PW` files parse with monotonic timestamps; largest sampling gap 0.85 s.
+- **ECG timing is ambiguous in the paper.** Section 2 says PPG and ECG were measured
+  "simultaneously"; the protocol lists ECG among the medical-stand measurements taken
+  before the camera stand. "Simultaneous ECG" in the Phase 1 notes above is therefore
+  unconfirmed - check timestamps before treating ECG as aligned with PPG or video.
+- **Respiratory rate from PPG needs a band-pass.** Without one the spectral peak collapses
+  onto 1/f drift (~7/min). Adopted: 12-30/min search after a 0.2-0.6 Hz band-pass. Even so
+  it is worse than a constant against the physician-counted label (2.43 vs 1.38 MAE).
+- **Labels that change between rest and post-exercise:** respiratory rate (16.9 → 19.2/min
+  mean), SpO₂ (slightly lower, wider spread) and arterial stiffness (re-measured each
+  session). HbA1c, cholesterol and stress are identical for >99.5% of subjects.
+- **White noise is a useless robustness test here**: only ~15% of its power lands in the
+  0.5-8 Hz pulse band. Use `faceai.features.add_noise` (pulse-band noise, exact in-band SNR).
+- **Phase 3 result (contact PPG, dev CV):** only age beats both baselines under the strict
+  rule; stiffness and respiratory rate pass the paired test only; HbA1c, cholesterol,
+  SpO₂, stress and temperature sit at the constant. Report: `reports/03_cv_robustness.md`.
