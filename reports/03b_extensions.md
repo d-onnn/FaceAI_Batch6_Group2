@@ -1,6 +1,6 @@
-# Phase 3b — Quality gate, camera timing, clinical thresholds, within-person change
+# Phase 3b — Robustness, clinical and explanation extensions
 
-_Generated 2026-10-13T15:13:04+08:00 by `python -m faceai.report03b` from saved artifacts only._
+_Generated 2026-10-13T19:42:31+08:00 by `python -m faceai.report03b` from saved artifacts only._
 
 Extensions of the Phase 3 contact-PPG work (`reports/03_cv_robustness.md`), on the
 same dev folds and models. No new data, no video, and the held-out test set is not read.
@@ -18,25 +18,25 @@ training data only and was fixed before any gate result was seen.
 
 ![gate](figures/03b_quality_gate.png)
 
-Validation MAE, **no gate → gated** (noise columns are in-band SNR in dB; the last
-three are the camera-timed inputs of section 2). Coverage is the same for every target
-because the gate looks only at signal quality.
+Validation MAE, **no gate → gated**. Noise columns are in-band SNR in dB, then the
+camera-timed inputs (section 2) and the shortened recordings (section 3). Coverage is
+the same for every target because the gate looks only at signal quality.
 
-| Target, model | clean | +20 | +10 | +5 | 0 | -5 | -10 | FullHD | USB | Iriun |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Recordings predicted | 95.0% | 93.2% | 12.9% | 0.0% | 0.0% | 0.0% | 0.0% | 95.3% | 95.1% | 95.2% |
-| Age, Ridge (L2) | 4.662 → 4.595 | 4.697 → 4.652 | 5.442 → 5.298 | 7.548 → 5.478 | 10.169 → 5.478 | 9.100 → 5.478 | 8.180 → 5.478 | 4.886 → 4.817 | 4.878 → 4.822 | 5.088 → 5.036 |
-| Age, LightGBM | 2.996 → 3.007 | 3.076 → 3.105 | 4.136 → 5.178 | 7.471 → 5.478 | 11.735 → 5.478 | 14.135 → 5.478 | 14.229 → 5.478 | 3.275 → 3.266 | 3.285 → 3.281 | 3.703 → 3.707 |
-| Respiratory rate, Ridge (L2) | 1.321 → 1.310 | 1.322 → 1.318 | 1.524 → 1.372 | 1.925 → 1.362 | 2.337 → 1.362 | 2.360 → 1.362 | 2.374 → 1.362 | 1.317 → 1.310 | 1.318 → 1.311 | 1.324 → 1.317 |
-| Respiratory rate, LightGBM | 1.315 → 1.316 | 1.315 → 1.321 | 1.382 → 1.369 | 1.434 → 1.362 | 1.439 → 1.362 | 1.410 → 1.362 | 1.410 → 1.362 | 1.303 → 1.306 | 1.305 → 1.311 | 1.305 → 1.306 |
-| Arterial stiffness, Ridge (L2) | 1.947 → 1.958 | 1.949 → 1.961 | 1.959 → 2.118 | 1.950 → 2.153 | 1.959 → 2.153 | 2.013 → 2.153 | 2.070 → 2.153 | 1.941 → 1.956 | 1.939 → 1.950 | 1.938 → 1.953 |
-| Arterial stiffness, LightGBM | 1.972 → 1.976 | 1.986 → 1.987 | 2.002 → 2.115 | 2.043 → 2.153 | 2.019 → 2.153 | 2.170 → 2.153 | 2.203 → 2.153 | 1.977 → 1.981 | 1.984 → 1.987 | 1.985 → 1.988 |
-| BMI, Ridge (L2) | 2.925 → 2.947 | 2.941 → 2.969 | 3.164 → 3.248 | 3.398 → 3.215 | 3.382 → 3.215 | 3.512 → 3.215 | 3.575 → 3.215 | 2.910 → 2.937 | 2.911 → 2.935 | 2.892 → 2.923 |
-| BMI, LightGBM | 2.932 → 2.966 | 2.945 → 2.982 | 2.999 → 3.201 | 3.030 → 3.215 | 3.042 → 3.215 | 3.115 → 3.215 | 3.129 → 3.215 | 2.938 → 2.973 | 2.930 → 2.963 | 2.922 → 2.957 |
-| HbA1c, Ridge (L2) | 0.414 → 0.413 | 0.414 → 0.413 | 0.415 → 0.414 | 0.418 → 0.414 | 0.419 → 0.414 | 0.420 → 0.414 | 0.423 → 0.414 | 0.414 → 0.412 | 0.414 → 0.413 | 0.413 → 0.412 |
-| HbA1c, LightGBM | 0.413 → 0.413 | 0.413 → 0.413 | 0.412 → 0.412 | 0.411 → 0.414 | 0.411 → 0.414 | 0.412 → 0.414 | 0.412 → 0.414 | 0.412 → 0.413 | 0.412 → 0.413 | 0.412 → 0.413 |
-| Cholesterol, Ridge (L2) | 0.640 → 0.641 | 0.640 → 0.641 | 0.635 → 0.646 | 0.632 → 0.645 | 0.636 → 0.645 | 0.644 → 0.645 | 0.645 → 0.645 | 0.642 → 0.642 | 0.641 → 0.642 | 0.643 → 0.644 |
-| Cholesterol, LightGBM | 0.640 → 0.641 | 0.640 → 0.641 | 0.640 → 0.646 | 0.639 → 0.645 | 0.639 → 0.645 | 0.632 → 0.645 | 0.632 → 0.645 | 0.640 → 0.641 | 0.640 → 0.641 | 0.640 → 0.641 |
+| Target, model | clean | +20 | +10 | +5 | 0 | -5 | -10 | FullHD | USB | Iriun | 30 s | 60 s | 120 s |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Recordings predicted | 95.0% | 93.2% | 12.9% | 0.0% | 0.0% | 0.0% | 0.0% | 95.3% | 95.1% | 95.2% | 82.0% | 90.6% | 94.8% |
+| Age, Ridge (L2) | 4.662 → 4.595 | 4.697 → 4.652 | 5.442 → 5.298 | 7.548 → 5.478 | 10.169 → 5.478 | 9.100 → 5.478 | 8.180 → 5.478 | 4.886 → 4.817 | 4.878 → 4.822 | 5.088 → 5.036 | 5.255 → 5.189 | 4.870 → 4.741 | 4.767 → 4.705 |
+| Age, LightGBM | 2.996 → 3.007 | 3.076 → 3.105 | 4.136 → 5.178 | 7.471 → 5.478 | 11.735 → 5.478 | 14.135 → 5.478 | 14.229 → 5.478 | 3.275 → 3.266 | 3.285 → 3.281 | 3.703 → 3.707 | 5.279 → 4.782 | 3.328 → 3.403 | 3.079 → 3.093 |
+| Respiratory rate, Ridge (L2) | 1.321 → 1.310 | 1.322 → 1.318 | 1.524 → 1.372 | 1.925 → 1.362 | 2.337 → 1.362 | 2.360 → 1.362 | 2.374 → 1.362 | 1.317 → 1.310 | 1.318 → 1.311 | 1.324 → 1.317 | 1.339 → 1.344 | 1.333 → 1.322 | 1.338 → 1.321 |
+| Respiratory rate, LightGBM | 1.315 → 1.316 | 1.315 → 1.321 | 1.382 → 1.369 | 1.434 → 1.362 | 1.439 → 1.362 | 1.410 → 1.362 | 1.410 → 1.362 | 1.303 → 1.306 | 1.305 → 1.311 | 1.305 → 1.306 | 1.366 → 1.370 | 1.309 → 1.304 | 1.314 → 1.313 |
+| Arterial stiffness, Ridge (L2) | 1.947 → 1.958 | 1.949 → 1.961 | 1.959 → 2.118 | 1.950 → 2.153 | 1.959 → 2.153 | 2.013 → 2.153 | 2.070 → 2.153 | 1.941 → 1.956 | 1.939 → 1.950 | 1.938 → 1.953 | 1.995 → 2.019 | 1.956 → 1.972 | 1.940 → 1.949 |
+| Arterial stiffness, LightGBM | 1.972 → 1.976 | 1.986 → 1.987 | 2.002 → 2.115 | 2.043 → 2.153 | 2.019 → 2.153 | 2.170 → 2.153 | 2.203 → 2.153 | 1.977 → 1.981 | 1.984 → 1.987 | 1.985 → 1.988 | 1.982 → 2.018 | 1.972 → 1.982 | 1.961 → 1.963 |
+| BMI, Ridge (L2) | 2.925 → 2.947 | 2.941 → 2.969 | 3.164 → 3.248 | 3.398 → 3.215 | 3.382 → 3.215 | 3.512 → 3.215 | 3.575 → 3.215 | 2.910 → 2.937 | 2.911 → 2.935 | 2.892 → 2.923 | 2.995 → 3.004 | 2.961 → 2.986 | 2.940 → 2.942 |
+| BMI, LightGBM | 2.932 → 2.966 | 2.945 → 2.982 | 2.999 → 3.201 | 3.030 → 3.215 | 3.042 → 3.215 | 3.115 → 3.215 | 3.129 → 3.215 | 2.938 → 2.973 | 2.930 → 2.963 | 2.922 → 2.957 | 3.036 → 3.019 | 2.963 → 3.002 | 2.928 → 2.948 |
+| HbA1c, Ridge (L2) | 0.414 → 0.413 | 0.414 → 0.413 | 0.415 → 0.414 | 0.418 → 0.414 | 0.419 → 0.414 | 0.420 → 0.414 | 0.423 → 0.414 | 0.414 → 0.412 | 0.414 → 0.413 | 0.413 → 0.412 | 0.410 → 0.410 | 0.414 → 0.412 | 0.414 → 0.413 |
+| HbA1c, LightGBM | 0.413 → 0.413 | 0.413 → 0.413 | 0.412 → 0.412 | 0.411 → 0.414 | 0.411 → 0.414 | 0.412 → 0.414 | 0.412 → 0.414 | 0.412 → 0.413 | 0.412 → 0.413 | 0.412 → 0.413 | 0.411 → 0.412 | 0.412 → 0.412 | 0.413 → 0.412 |
+| Cholesterol, Ridge (L2) | 0.640 → 0.641 | 0.640 → 0.641 | 0.635 → 0.646 | 0.632 → 0.645 | 0.636 → 0.645 | 0.644 → 0.645 | 0.645 → 0.645 | 0.642 → 0.642 | 0.641 → 0.642 | 0.643 → 0.644 | 0.638 → 0.640 | 0.641 → 0.642 | 0.640 → 0.641 |
+| Cholesterol, LightGBM | 0.640 → 0.641 | 0.640 → 0.641 | 0.640 → 0.646 | 0.639 → 0.645 | 0.639 → 0.645 | 0.632 → 0.645 | 0.632 → 0.645 | 0.640 → 0.641 | 0.640 → 0.641 | 0.640 → 0.641 | 0.638 → 0.636 | 0.640 → 0.641 | 0.640 → 0.641 |
 
 **Reading it.** The gate turns catastrophic failures into the constant guess: age at
 0 dB goes from 11.7 to 5.5 years, respiratory rate (Ridge) from
@@ -78,40 +78,40 @@ Validation MAE by input:
 |---|---|---|---|---|---|---|
 | Age | clean | LightGBM | 2.996 | 3.275 | 3.285 | 3.703 |
 | Age | clean | Ridge (L2) | 4.662 | 4.886 | 4.878 | 5.088 |
-| Age | same camera | LightGBM | — | 2.93 | 2.886 | 3.013 |
-| Age | same camera | Ridge (L2) | — | 4.635 | 4.659 | 4.608 |
+| Age | same variant | LightGBM | — | 2.93 | 2.886 | 3.013 |
+| Age | same variant | Ridge (L2) | — | 4.635 | 4.659 | 4.608 |
 | Arterial stiffness | clean | LightGBM | 1.972 | 1.977 | 1.984 | 1.985 |
 | Arterial stiffness | clean | Ridge (L2) | 1.947 | 1.941 | 1.939 | 1.938 |
-| Arterial stiffness | same camera | LightGBM | — | 1.975 | 1.98 | 1.974 |
-| Arterial stiffness | same camera | Ridge (L2) | — | 1.949 | 1.943 | 1.947 |
+| Arterial stiffness | same variant | LightGBM | — | 1.975 | 1.98 | 1.974 |
+| Arterial stiffness | same variant | Ridge (L2) | — | 1.949 | 1.943 | 1.947 |
 | BMI | clean | LightGBM | 2.932 | 2.938 | 2.93 | 2.922 |
 | BMI | clean | Ridge (L2) | 2.925 | 2.91 | 2.911 | 2.892 |
-| BMI | same camera | LightGBM | — | 2.942 | 2.932 | 2.922 |
-| BMI | same camera | Ridge (L2) | — | 2.922 | 2.927 | 2.915 |
+| BMI | same variant | LightGBM | — | 2.942 | 2.932 | 2.922 |
+| BMI | same variant | Ridge (L2) | — | 2.922 | 2.927 | 2.915 |
 | Cholesterol | clean | LightGBM | 0.64 | 0.64 | 0.64 | 0.64 |
 | Cholesterol | clean | Ridge (L2) | 0.64 | 0.642 | 0.641 | 0.643 |
-| Cholesterol | same camera | LightGBM | — | 0.64 | 0.64 | 0.64 |
-| Cholesterol | same camera | Ridge (L2) | — | 0.641 | 0.639 | 0.638 |
+| Cholesterol | same variant | LightGBM | — | 0.64 | 0.64 | 0.64 |
+| Cholesterol | same variant | Ridge (L2) | — | 0.641 | 0.639 | 0.638 |
 | HbA1c | clean | LightGBM | 0.413 | 0.412 | 0.412 | 0.412 |
 | HbA1c | clean | Ridge (L2) | 0.414 | 0.414 | 0.414 | 0.413 |
-| HbA1c | same camera | LightGBM | — | 0.413 | 0.413 | 0.413 |
-| HbA1c | same camera | Ridge (L2) | — | 0.411 | 0.412 | 0.411 |
+| HbA1c | same variant | LightGBM | — | 0.413 | 0.413 | 0.413 |
+| HbA1c | same variant | Ridge (L2) | — | 0.411 | 0.412 | 0.411 |
 | Respiratory rate | clean | LightGBM | 1.315 | 1.303 | 1.305 | 1.305 |
 | Respiratory rate | clean | Ridge (L2) | 1.321 | 1.317 | 1.318 | 1.324 |
-| Respiratory rate | same camera | LightGBM | — | 1.311 | 1.31 | 1.298 |
-| Respiratory rate | same camera | Ridge (L2) | — | 1.316 | 1.315 | 1.318 |
+| Respiratory rate | same variant | LightGBM | — | 1.311 | 1.31 | 1.298 |
+| Respiratory rate | same variant | Ridge (L2) | — | 1.316 | 1.315 | 1.318 |
 | SpO₂ | clean | LightGBM | 0.881 | 0.881 | 0.881 | 0.881 |
 | SpO₂ | clean | Ridge (L2) | 0.877 | 0.877 | 0.877 | 0.877 |
-| SpO₂ | same camera | LightGBM | — | 0.881 | 0.881 | 0.881 |
-| SpO₂ | same camera | Ridge (L2) | — | 0.877 | 0.877 | 0.877 |
+| SpO₂ | same variant | LightGBM | — | 0.881 | 0.881 | 0.881 |
+| SpO₂ | same variant | Ridge (L2) | — | 0.877 | 0.877 | 0.877 |
 | Stress | clean | LightGBM | 1.18 | 1.18 | 1.181 | 1.181 |
 | Stress | clean | Ridge (L2) | 1.19 | 1.189 | 1.188 | 1.187 |
-| Stress | same camera | LightGBM | — | 1.184 | 1.189 | 1.179 |
-| Stress | same camera | Ridge (L2) | — | 1.19 | 1.19 | 1.189 |
+| Stress | same variant | LightGBM | — | 1.184 | 1.189 | 1.179 |
+| Stress | same variant | Ridge (L2) | — | 1.19 | 1.19 | 1.189 |
 | Temperature | clean | LightGBM | 0.099 | 0.099 | 0.099 | 0.099 |
 | Temperature | clean | Ridge (L2) | 0.099 | 0.099 | 0.099 | 0.099 |
-| Temperature | same camera | LightGBM | — | 0.099 | 0.099 | 0.099 |
-| Temperature | same camera | Ridge (L2) | — | 0.099 | 0.099 | 0.099 |
+| Temperature | same variant | LightGBM | — | 0.099 | 0.099 | 0.099 |
+| Temperature | same variant | Ridge (L2) | — | 0.099 | 0.099 | 0.099 |
 
 **Reading it.** Heart rate is unchanged by camera timing (r ≥ 0.9999).
 Pulse-shape features shift slightly and consistently: rise time +6 to +10 ms,
@@ -123,7 +123,72 @@ recovers it (2.93 / 3.01). The contact-to-camera gap is
 therefore not mainly about frame timing: Phase 4 should spend its effort on optical
 noise and signal quality, and train on the signal it will be deployed on.
 
-## 3. Clinical thresholds — judged against recognised standards
+## 3. Recording length — how long must a user hold still?
+
+_Origin: Graphyti (controllable, reproducible scenario variations; here the controlled
+factor is the recording length a phone user would accept)._
+
+Features from only the first 30, 60 or 120 s of each 180-s contact recording, scored by
+models fitted on full recordings and by models refitted on the same length.
+
+![duration](figures/03b_recording_length.png)
+
+| length | no heart rate (%) | respiration available (%) | HR vs full, median |diff| (bpm) | APG b/a r vs full |
+|---|---|---|---|---|
+| first 30 s | 7.95 | 0.0 | 2.585 | 0.915 |
+| first 60 s | 0.314 | 99.686 | 1.796 | 0.871 |
+| first 120 s | 0.0 | 100.0 | 0.778 | 0.898 |
+
+| Target | Fitted on | Model | 30 s | 60 s | 120 s | 180 s (full) |
+|---|---|---|---|---|---|---|
+| Age | clean | LightGBM | 5.279 | 3.328 | 3.079 | 2.996 |
+| Age | clean | Ridge (L2) | 5.255 | 4.87 | 4.767 | 4.662 |
+| Age | same variant | LightGBM | 4.197 | 3.195 | 3.051 | — |
+| Age | same variant | Ridge (L2) | 5.037 | 4.812 | 4.731 | — |
+| Arterial stiffness | clean | LightGBM | 1.982 | 1.972 | 1.961 | 1.972 |
+| Arterial stiffness | clean | Ridge (L2) | 1.995 | 1.956 | 1.94 | 1.947 |
+| Arterial stiffness | same variant | LightGBM | 1.98 | 1.989 | 1.981 | — |
+| Arterial stiffness | same variant | Ridge (L2) | 1.995 | 1.962 | 1.942 | — |
+| BMI | clean | LightGBM | 3.036 | 2.963 | 2.928 | 2.932 |
+| BMI | clean | Ridge (L2) | 2.995 | 2.961 | 2.94 | 2.925 |
+| BMI | same variant | LightGBM | 2.941 | 2.979 | 2.938 | — |
+| BMI | same variant | Ridge (L2) | 2.94 | 2.919 | 2.922 | — |
+| Cholesterol | clean | LightGBM | 0.638 | 0.64 | 0.64 | 0.64 |
+| Cholesterol | clean | Ridge (L2) | 0.638 | 0.641 | 0.64 | 0.64 |
+| Cholesterol | same variant | LightGBM | 0.649 | 0.643 | 0.643 | — |
+| Cholesterol | same variant | Ridge (L2) | 0.635 | 0.639 | 0.64 | — |
+| HbA1c | clean | LightGBM | 0.411 | 0.412 | 0.413 | 0.413 |
+| HbA1c | clean | Ridge (L2) | 0.41 | 0.414 | 0.414 | 0.414 |
+| HbA1c | same variant | LightGBM | 0.41 | 0.409 | 0.412 | — |
+| HbA1c | same variant | Ridge (L2) | 0.408 | 0.412 | 0.414 | — |
+| Respiratory rate | clean | LightGBM | 1.366 | 1.309 | 1.314 | 1.315 |
+| Respiratory rate | clean | Ridge (L2) | 1.339 | 1.333 | 1.338 | 1.321 |
+| Respiratory rate | same variant | LightGBM | 1.33 | 1.308 | 1.325 | — |
+| Respiratory rate | same variant | Ridge (L2) | 1.337 | 1.303 | 1.332 | — |
+| SpO₂ | clean | LightGBM | 0.881 | 0.881 | 0.881 | 0.881 |
+| SpO₂ | clean | Ridge (L2) | 0.876 | 0.877 | 0.877 | 0.877 |
+| SpO₂ | same variant | LightGBM | 0.881 | 0.882 | 0.881 | — |
+| SpO₂ | same variant | Ridge (L2) | 0.877 | 0.876 | 0.877 | — |
+| Stress | clean | LightGBM | 1.185 | 1.179 | 1.182 | 1.18 |
+| Stress | clean | Ridge (L2) | 1.189 | 1.19 | 1.188 | 1.19 |
+| Stress | same variant | LightGBM | 1.194 | 1.185 | 1.186 | — |
+| Stress | same variant | Ridge (L2) | 1.188 | 1.189 | 1.188 | — |
+| Temperature | clean | LightGBM | 0.099 | 0.099 | 0.099 | 0.099 |
+| Temperature | clean | Ridge (L2) | 0.099 | 0.099 | 0.099 | 0.099 |
+| Temperature | same variant | LightGBM | 0.098 | 0.099 | 0.099 | — |
+| Temperature | same variant | Ridge (L2) | 0.099 | 0.099 | 0.099 | — |
+
+**Reading it.** Sixty seconds keeps most of the value; thirty does not. At 30 s,
+7.9% of sessions yield no heart rate (30 s holds only ~30-50 beats, so
+a low heart rate or a few beats rejected as artefacts leaves fewer than the 30 valid beats
+required), no respiration estimate is possible (it needs at least 40 s of beats), and
+the age model fitted on full recordings is no better than the constant (5.28
+vs 5.48 years); refitting on 30 s recovers part of it (4.20). At 60 s
+it is 3.33, close to the full 3.00. The quality gate predicts only
+82% of 30-s recordings. For the Phase 12 demo this means a scan of at least
+60 s, with the app saying so rather than returning a weaker estimate quietly.
+
+## 4. Clinical thresholds — judged against recognised standards
 
 _Origin: BetterMush (built around the IDDSI framework) and NatureRisk (built around
 TNFD, with every conclusion linked to its evidence)._
@@ -165,7 +230,7 @@ TNFD, with every conclusion linked to its evidence)._
   range) is unmet: these numbers cannot establish compliance, and a tolerance that a
   constant passes says nothing about the model.
 
-## 4. Within-person change — does the model follow the person?
+## 5. Within-person change — does the model follow the person?
 
 _Origin: SymSkin (an “AI health memory” that tracks each user against their own
 history)._
@@ -198,19 +263,75 @@ does the PPG respiration estimate itself. All three labels were taken at the sep
 medical station, so weak tracking may reflect the label as much as the signal.
 Personal baselines are worth building only for signals that pass this test.
 
-## 5. Provenance
+## 6. Explanations — why, not just what
 
-- **CV results (`artifacts/cv/results.json`)** — generated 2026-10-13T15:06:55+08:00; commit `d14dd93` (uncommitted paths: 0); split SHA-256 `08f6fb63072e…`; db.csv blob `b6db00bc074a…`; lockfile `435869dddb54…`; inputs: `artifacts/features/ppg_clean.parquet` 2014361e6480….
-- **Robustness (`artifacts/cv/*.csv`)** — generated 2026-10-13T15:11:40+08:00; commit `d14dd93` (uncommitted paths: 0); split SHA-256 `08f6fb63072e…`; db.csv blob `b6db00bc074a…`; lockfile `435869dddb54…`; inputs: 11 files, each SHA-256 recorded in the JSON.
-- **Clinical (`artifacts/cv/clinical.json`)** — generated 2026-10-13T15:12:35+08:00; commit `d14dd93` (uncommitted paths: 0); split SHA-256 `08f6fb63072e…`; db.csv blob `b6db00bc074a…`; lockfile `435869dddb54…`; inputs: `artifacts/cv/oof.parquet` 8373186ba1f6…, `artifacts/features/ppg_clean.parquet` 2014361e6480….
+_Origin: MorphTwin (“explains congestion” instead of only showing it; its Diagnosis
+agent explains likely causes). Stability check from the earlier literature triage: model
+diagnostics are often less reliable than assumed._
 
-## 6. Reproduce
+Grouped permutation importance: on each validation fold, one group of inputs is shuffled
+across sessions (columns in a group together) and the rise in MAE is recorded; 20
+repeats per group. Fold agreement is the Spearman correlation between two folds' group
+importances, over all 10 fold pairs. An explanation that changes between folds is not a
+finding.
+
+![explain](figures/03b_explanations.png)
+
+| Target | Model | Top 3 groups (MAE rise) | Fold agreement ρ (mean) | ρ (worst pair) | Top group the same in every fold |
+|---|---|---|---|---|---|
+| Age | LightGBM | pulse shape (1.867), rate variability (0.754), beat statistics (0.684) | 0.78 | 0.48 | yes |
+| Age | Ridge (L2) | pulse shape (1.146), rate variability (0.937), heart rate (0.902) | 0.92 | 0.86 | no |
+| Arterial stiffness | LightGBM | heart rate (0.122), pulse shape (0.085), beat statistics (0.017) | 0.55 | 0.13 | no |
+| Arterial stiffness | Ridge (L2) | heart rate (0.155), pulse shape (0.043), age (0.022) | 0.86 | 0.72 | yes |
+| BMI | LightGBM | age (0.258), sex (0.163), rate variability (0.065) | 0.45 | 0.12 | no |
+| BMI | Ridge (L2) | age (0.357), sex (0.212), rate variability (0.099) | 0.53 | 0.00 | no |
+| Cholesterol | LightGBM | age (0.009), BMI (0.006), pulse shape (0.001) | 0.30 | -0.13 | no |
+| Cholesterol | Ridge (L2) | BMI (0.010), age (0.008), sex (0.001) | 0.07 | -0.92 | no |
+| HbA1c | LightGBM | age (0.031), signal quality (0.000), sex (0.000) | 0.39 | -0.16 | yes |
+| HbA1c | Ridge (L2) | age (0.006), pulse shape (0.002), heart rate (0.001) | 0.24 | -0.30 | no |
+| Respiratory rate | LightGBM | beat statistics (0.092), pulse shape (0.051), respiration (0.049) | 0.84 | 0.64 | no |
+| Respiratory rate | Ridge (L2) | beat statistics (0.080), heart rate (0.057), respiration (0.052) | 0.81 | 0.62 | no |
+
+Does the model know the person, or only the state? Mean OOF predictions and ranking
+within each state:
+
+| Target | Model | Label shift, rest → post | Predicted shift | Within-rest ranking ρ | Within-post ranking ρ |
+|---|---|---|---|---|---|
+| Respiratory rate | Ridge (L2) | +2.36 | +0.32 | +0.113 | +0.211 |
+| Respiratory rate | LightGBM | +2.36 | +0.35 | +0.120 | +0.225 |
+| Arterial stiffness | Ridge (L2) | +0.55 | +0.35 | +0.350 | +0.415 |
+| Arterial stiffness | LightGBM | +0.55 | +0.31 | +0.321 | +0.399 |
+
+**Reading it.**
+
+- **Age** is driven by **pulse shape** (rise time, half-height width, systolic fraction,
+  APG b/a) in both models; fold agreement ρ is 0.78 (LightGBM, top group in every fold) and 0.92
+  (Ridge). Physiologically plausible: second-derivative pulse waves track vascular
+  ageing (Takazawa et al., 1998, doi:10.1161/01.HYP.32.2.365).
+- **Arterial stiffness** is driven first by **heart rate** in both models (in every fold
+  for Ridge, ρ 0.86; less stable for LightGBM, ρ 0.55). Before any
+  stiffness result is reported, test whether PPG adds anything beyond heart rate itself.
+- **Respiratory rate** leans on beat statistics more than on the respiration estimates.
+  The models predict only a small part of the post-exercise rise but do rank people
+  weakly within the same state, so they are not merely detecting rest vs exercise.
+- **HbA1c and cholesterol** have near-zero importances that disagree between folds:
+  there is no stable explanation to give, consistent with there being no signal.
+
+## 7. Provenance
+
+- **CV results (`artifacts/cv/results.json`)** — generated 2026-10-13T19:32:33+08:00; commit `ad5864c` (uncommitted paths: 0); split SHA-256 `08f6fb63072e…`; db.csv blob `b6db00bc074a…`; lockfile `435869dddb54…`; inputs: `artifacts/features/ppg_clean.parquet` 2014361e6480….
+- **Robustness (`artifacts/cv/*.csv`)** — generated 2026-10-13T19:39:36+08:00; commit `ad5864c` (uncommitted paths: 0); split SHA-256 `08f6fb63072e…`; db.csv blob `b6db00bc074a…`; lockfile `435869dddb54…`; inputs: 14 files, each SHA-256 recorded in the JSON.
+- **Clinical (`artifacts/cv/clinical.json`)** — generated 2026-10-13T19:40:31+08:00; commit `ad5864c` (uncommitted paths: 0); split SHA-256 `08f6fb63072e…`; db.csv blob `b6db00bc074a…`; lockfile `435869dddb54…`; inputs: `artifacts/cv/oof.parquet` 8373186ba1f6…, `artifacts/features/ppg_clean.parquet` 2014361e6480….
+- **Explanations (`artifacts/cv/explain*.csv`)** — generated 2026-10-13T19:41:06+08:00; commit `ad5864c` (uncommitted paths: 0); split SHA-256 `08f6fb63072e…`; db.csv blob `b6db00bc074a…`; lockfile `435869dddb54…`; inputs: `artifacts/features/ppg_clean.parquet` 2014361e6480….
+
+## 8. Reproduce
 
 ```
-make features   # adds the three camera-timed feature tables
+make features   # adds camera-timed and shortened-recording feature tables
 make cv
-make robustness # adds camera.csv and gate.csv
+make robustness # adds camera.csv, duration.csv and gate.csv
 make clinical
+make explain
 make report03b
 ```
 
