@@ -70,6 +70,23 @@ Delivered as `reports/03_cv_robustness.md` (the DoD table is its section 3), ext
 - Not done: adversarial testing (deferred to Phase 8 deep models); the APG c/d/e waves and
   aging index (unvalidated at 100 Hz / 8-bit; Phase 5).
 
+### Phase 3b — extensions from the 2026 Pinnacle Prize poster review ✅ (2026-10-13)
+
+Evaluation-only additions on the same dev folds and models; requested by Joshua. No new
+data, no video, test set untouched. Report: `reports/03b_extensions.md`; `make phase3`.
+
+- [x] Camera-timed feature tables (`features --camera`): the contact pulse read at each
+      camera's real frame times. Timing is not the contact-to-camera gap.
+- [x] Quality gate + threshold sweep (`robustness`): caps noise failures at the constant;
+      blind to shape shift; the 5th-percentile setting over-abstains at +10 dB.
+- [x] Clinical thresholds (`clinical`): ADA HbA1c 5.7/6.5 %, cholesterol 5.2 mmol/L AUROC;
+      RR ±3/min and SpO₂ ARMS shown NOT to be meaningful passes here.
+- [x] Within-person change (`clinical`): stiffness tracks weakly (ρ ≈ 0.14), RR and SpO₂ do
+      not; heart-rate positive control ρ = 0.38.
+- [x] Run provenance (`faceai.provenance`) in every results file; 64 tests green.
+- [x] rPPG-Toolbox RAIL licence restriction recorded in `CLAUDE.md` (blocks its use for
+      biomarker inference pending legal review).
+
 ## Phase 4 — rPPG extraction + signal quality (cached, resumable)
 DoD: `reports/04_rppg.md` with rPPG-vs-contact HR MAE by camera/state and SQI distributions; a
 resumable cache under `artifacts/rppg/` that re-runs without recomputing finished files.
@@ -99,6 +116,14 @@ DoD: `reports/11_summary.md` decision table.
 
 ## Phase 12 — Privacy-by-design demo (Gradio)
 DoD: app runs locally; a test asserts no video file persists after a request; screenshots saved.
+
+Proposed from the Pinnacle Prize review (2026-10-13), for approval at the Phase 12 gate:
+- Quality gate in the demo: show "recording not clean enough - not estimated" instead of a
+  number below the training-quality floor (Phase 3b), as BetterMush rejects a failed meal.
+- Human oversight and non-diagnostic wording on every output (SymSkin, RoboSpec; also the
+  RAIL §3.2(c)(vi) condition if any toolbox code is ever used).
+- Senior-friendly, multilingual UI - large text, high contrast, one-touch flow; English,
+  Mandarin, Malay, Tamil (ShopFrontSG, SymSkin Senior Mode).
 
 ## Phase 13 — Model cards, dataset card, report scaffold, team README
 DoD: `MODEL_CARDS/`, `DATASET_CARD.md`, `report/`, `README.md`, `CONTRIBUTING.md` all present.

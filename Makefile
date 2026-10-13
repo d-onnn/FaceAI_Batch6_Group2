@@ -6,7 +6,7 @@
 
 PYTHON ?= python
 
-.PHONY: help verify hardware probe lock test audit eda splits features cv diagnostics robustness report03 phase3
+.PHONY: help verify hardware probe lock test audit eda splits features cv diagnostics robustness clinical report03 report03b phase3
 
 help:
 	@echo make verify   - environment verifier, webcam and face checks skipped
@@ -16,11 +16,13 @@ help:
 	@echo make audit    - print the Phase 1 integrity checks
 	@echo make eda      - Phase 1 audit + EDA, write reports/01_eda.md and figures
 	@echo make splits   - Phase 2 subject-level splits, write artifacts/splits.parquet
-	@echo make features - Phase 3 contact-PPG features, clean + noise levels (dev only)
+	@echo make features - Phase 3 contact-PPG features: clean, noise levels, camera timing
 	@echo make cv       - Phase 3 5-fold CV with bootstrap CIs, write artifacts/cv/
-	@echo make diagnostics - Phase 3 overfitting curves (regularisation, boosting, learning)
-	@echo make robustness  - Phase 3 noise, rest-to-exercise shift, subgroups, stability
+	@echo make diagnostics - Phase 3 overfitting curves: regularisation, boosting, learning
+	@echo make robustness  - Phase 3 noise, shift, subgroups, stability, camera timing, gate
+	@echo make clinical    - Phase 3b clinical thresholds and within-person change
 	@echo make report03 - Phase 3 report + figures from the saved artifacts
+	@echo make report03b - Phase 3b report: gate, camera timing, clinical, change
 	@echo make phase3   - all of the Phase 3 steps above, in order
 	@echo make lock     - re-record exact installed versions - run after EVERY install
 
@@ -40,7 +42,7 @@ splits:
 	$(PYTHON) -m faceai.splits
 
 features:
-	$(PYTHON) -m faceai.features --noise
+	$(PYTHON) -m faceai.features --noise --camera
 
 cv:
 	$(PYTHON) -m faceai.cv
@@ -51,10 +53,16 @@ diagnostics:
 robustness:
 	$(PYTHON) -m faceai.robustness
 
+clinical:
+	$(PYTHON) -m faceai.clinical
+
 report03:
 	$(PYTHON) -m faceai.report03
 
-phase3: features cv diagnostics robustness report03
+report03b:
+	$(PYTHON) -m faceai.report03b
+
+phase3: features cv diagnostics robustness clinical report03 report03b
 
 hardware:
 	$(PYTHON) -m faceai.hardware

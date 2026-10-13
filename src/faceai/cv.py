@@ -40,7 +40,8 @@ from sklearn.preprocessing import StandardScaler
 
 from faceai.data import audit
 from faceai.data.hub import ROOT
-from faceai.features import MODEL_FEATURES, dev_sessions, load_features
+from faceai.features import MODEL_FEATURES, dev_sessions, features_path, load_features
+from faceai.provenance import record
 from faceai.splits import N_FOLDS, SEED
 from faceai.targets import load
 
@@ -306,6 +307,7 @@ def main() -> None:
         "inner_folds": INNER_FOLDS,
         "seed": SEED,
         "convergence_warnings": int(folds["convergence_warnings"].sum()),
+        "provenance": record([features_path()]),
     }
     (OUT_DIR / "results.json").write_text(
         json.dumps({"meta": meta, "targets": results}, indent=2) + "\n",

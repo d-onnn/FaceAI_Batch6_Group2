@@ -157,3 +157,28 @@ Use `faceai.data.formats`; do not re-parse these by hand.
 - **Phase 3 result (contact PPG, dev CV):** only age beats both baselines under the strict
   rule; stiffness and respiratory rate pass the paired test only; HbA1c, cholesterol,
   SpO₂, stress and temperature sit at the constant. Report: `reports/03_cv_robustness.md`.
+
+## Verified facts — 2026-10-13 (Phase 3b). Report: `reports/03b_extensions.md`.
+
+- **rPPG-Toolbox licence (RAIL v1.1, Nov 2022; checked at commit b7500b8) restricts the use
+  this project needs.** §3.2(a)(ii) forbids using the code or any derivative to "detect or
+  infer" a person's gender, age, skin color or "health and medical conditions" (age and
+  medical conditions only "for the purpose of improving software/hardware accessibility");
+  §3.2(c)(vi) forbids diagnosing "without human oversight"; §3.3 makes these restrictions
+  binding on anyone the work is passed to. Group 2's targets are exactly these. **Do not put
+  rPPG-Toolbox code or weights in the biomarker pipeline until NTU/A*STAR legal confirm it
+  is allowed.** Implement POS/CHROM from their original papers instead. Not legal advice.
+  No FaceAI code uses the toolbox today (verified by search).
+- **Camera frame timestamps share the PPG clock** and overlap it for the full ~180 s on all
+  three cameras (`faceai.features.load_camera_ppg`). Camera TIMING alone barely changes the
+  features (HR r ≥ 0.9999; rise time +6–10 ms, APG b/a −0.03 to −0.04): the contact-to-camera
+  gap is optical, not temporal. Age (shape-dependent) worsens 3.0 → 3.7 years at Iriun's
+  ~24 fps and recovers when refitted on the same timing.
+- **A quality gate caps noise failures but not domain shift.** Abstaining below the 5th
+  percentile of training-fold `sqi_template_r` holds every target at or near the constant
+  under heavy noise, but it never fires on camera-timed inputs whose shape has shifted.
+- **Clinical tolerances can be met by a constant.** RR within ±3/min: 94.6% for the mean
+  predictor. SpO₂ ARMS 1.33% < ISO 4%, but only 0.2% of labels are < 90% and none < 70%, so
+  ISO 80601-2-61 compliance cannot be assessed on this data. Never cite either as a pass.
+- **Diabetes-range HbA1c (≥ 6.5%): 14 dev subjects.** Demographics rank them (AUROC 0.89);
+  no PPG model's prediction ever crosses 6.5%, so sensitivity at the cut-off is zero.

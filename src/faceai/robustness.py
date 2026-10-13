@@ -2,7 +2,7 @@
 
     python -m faceai.robustness        # or: make robustness
 
-Robustness asks whether a result survives conditions it was not fitted under. Four tests,
+Robustness asks whether a result survives conditions it was not fitted under. Six tests,
 all on dev folds (the held-out test set is not touched):
 
   noise injection   models fitted on CLEAN training-fold features score validation folds
@@ -16,12 +16,23 @@ all on dev folds (the held-out test set is not touched):
   stability         HbA1c and cholesterol were recorded once per person (identical before
                     and after exercise for >99.7% of subjects), so a prediction that moves
                     between a person's two sessions is tracking the session, not the label.
+  camera sampling   the contact pulse read at each camera's real frame times (see
+                    `faceai.features`): models fitted on clean features score camera-sampled
+                    ones, and are also refitted on camera-sampled features. Isolates the
+                    camera's temporal sampling only - not its optics.
+  quality gate      "verify every recording": a model predicts only when the recording's
+                    template-match quality is at least the 5th percentile of its own training
+                    fold, and otherwise falls back to the training-fold mean (abstains).
+                    Scored at every noise level and camera variant, with coverage reported,
+                    plus a sweep of that percentile for the error-coverage trade-off.
 
 Adversarial testing (crafted worst-case inputs) is not run: it is meaningful for models on
 raw signals and is deferred to the Phase 8 deep models.
 """
 
 from __future__ import annotations
+
+import json
 
 import numpy as np
 import pandas as pd
@@ -36,12 +47,25 @@ from faceai.cv import (
     mae,
     session_table,
 )
-from faceai.features import MODEL_FEATURES, SNR_LEVELS_DB, load_features
+from faceai.features import (
+    CAMERAS,
+    MODEL_FEATURES,
+    SNR_LEVELS_DB,
+    features_path,
+    load_features,
+)
+from faceai.provenance import record
 from faceai.splits import N_FOLDS, OLDER_THAN, SEED
 
 ROBUST_MODELS = ["Mean", "Ridge (L2)", "LightGBM"]
 STABLE_TARGETS = ["hba1c", "cholesterol"]
 N_BOOT = 2000
+REFIT_MODELS = ["Ridge (L2)", "LightGBM"]
+GATE_SQI = "sqi_template_r"
+GATE_QUANTILE = 0.05  # headline: abstain below the 5th percentile of training quality
+# The threshold sweep behind the error-coverage trade-off. The headline above was fixed
+# before any gate result was seen; the sweep is for choosing a deployment setting later.
+GATE_SWEEP = (0.0, 0.01, 0.05, 0.10, 0.25)
 
 
 def _fit(name: str, tr: pd.DataFrame, target: str):
@@ -63,6 +87,34 @@ def noisy_tables() -> dict[str, pd.DataFrame]:
             MODEL_FEATURES
         ]
     return out
+
+
+def camera_tables() -> dict[str, pd.DataFrame]:
+    """Camera-sampled features per camera, keyed like `session_table` rows."""
+    out = {}
+    for cam in CAMERAS:
+        f = load_features(camera=cam)
+        out[f"camera {cam}"] = f[f["readable"]].set_index(["patient_id", "step"])[
+            MODEL_FEATURES
+        ]
+    return out
+
+
+def _with_features(rows: pd.DataFrame, feats: pd.DataFrame) -> pd.DataFrame:
+    """`rows` with its PPG features replaced by the same sessions' rows of `feats`."""
+    key = pd.MultiIndex.from_frame(rows[["patient_id", "step"]])
+    out = rows.copy()
+    out[MODEL_FEATURES] = feats.loc[key].to_numpy()
+    return out
+
+
+def gate_predictions(
+    pred: np.ndarray, sqi: np.ndarray, tau: float, fallback: float
+) -> tuple[np.ndarray, np.ndarray]:
+    """Prediction where quality >= tau, else the fallback. NaN quality never passes."""
+    with np.errstate(invalid="ignore"):
+        ok = np.asarray(sqi, dtype=float) >= tau
+    return np.where(ok, pred, fallback), ok
 
 
 def _noise_fold(t: pd.DataFrame, noisy: dict, target: str, fold: int) -> list[dict]:
@@ -114,6 +166,75 @@ def _shift_fold(t: pd.DataFrame, target: str, fold: int) -> list[dict]:
                     "val_mae": mae(v[target], est.predict(v[cols])),
                 }
             )
+    return rows
+
+
+def _camera_fold(t: pd.DataFrame, cams: dict, target: str, fold: int) -> list[dict]:
+    tr, va = t[t["fold"] != fold], t[t["fold"] == fold]
+    rows = []
+    for name in ROBUST_MODELS:  # fitted on clean contact features
+        est, cols = _fit(name, tr, target)
+        for level, feats in [("clean", None), *cams.items()]:
+            v = va if feats is None else _with_features(va, feats)
+            rows.append(
+                {
+                    "target": target,
+                    "model": name,
+                    "fold": fold,
+                    "trained_on": "clean",
+                    "level": level,
+                    "val_mae": mae(v[target], est.predict(v[cols])),
+                }
+            )
+    for level, feats in cams.items():  # refitted on the same camera's sampling
+        tc = _with_features(t, feats)
+        trc, vac = tc[tc["fold"] != fold], tc[tc["fold"] == fold]
+        for name in REFIT_MODELS:
+            est, cols = _fit(name, trc, target)
+            rows.append(
+                {
+                    "target": target,
+                    "model": name,
+                    "fold": fold,
+                    "trained_on": "same camera",
+                    "level": level,
+                    "val_mae": mae(vac[target], est.predict(vac[cols])),
+                }
+            )
+    return rows
+
+
+def _gate_fold(t: pd.DataFrame, variants: dict, target: str, fold: int) -> list[dict]:
+    tr, va = t[t["fold"] != fold], t[t["fold"] == fold]
+    fallback = float(tr[target].mean())
+    rows = []
+    for name in REFIT_MODELS:
+        est, cols = _fit(name, tr, target)
+        for level, feats in variants.items():
+            v = va if feats is None else _with_features(va, feats)
+            y, pred = v[target].to_numpy(), est.predict(v[cols])
+            for q in GATE_SWEEP:
+                tau = float(np.nanquantile(tr[GATE_SQI], q))
+                gated, ok = gate_predictions(
+                    pred, v[GATE_SQI].to_numpy(), tau, fallback
+                )
+                rows.append(
+                    {
+                        "target": target,
+                        "model": name,
+                        "fold": fold,
+                        "level": level,
+                        "quantile": q,
+                        "headline": q == GATE_QUANTILE,
+                        "n": len(v),
+                        "tau": tau,
+                        "coverage": float(ok.mean()),
+                        "mae_ungated": mae(y, pred),
+                        "mae_gated": mae(y, gated),
+                        "mae_constant": mae(y, np.full(len(y), fallback)),
+                        "mae_covered": mae(y[ok], pred[ok]) if ok.any() else np.nan,
+                    }
+                )
     return rows
 
 
@@ -203,10 +324,26 @@ def main() -> None:
     pd.DataFrame([r for rows in res for r in rows]).to_csv(
         OUT_DIR / "shift.csv", index=False
     )
+    cams = camera_tables()
+    res = Parallel(n_jobs=12)(delayed(_camera_fold)(t, cams, tg, k) for tg, k in jobs)
+    pd.DataFrame([r for rows in res for r in rows]).to_csv(
+        OUT_DIR / "camera.csv", index=False
+    )
+    variants = {"clean": None, **noisy, **cams}
+    res = Parallel(n_jobs=12)(delayed(_gate_fold)(t, variants, tg, k) for tg, k in jobs)
+    pd.DataFrame([r for rows in res for r in rows]).to_csv(
+        OUT_DIR / "gate.csv", index=False
+    )
     oof = pd.read_parquet(OUT_DIR / "oof.parquet")
     subgroups(t, oof).to_json(OUT_DIR / "subgroups.json", orient="records", indent=1)
     stability(oof).to_csv(OUT_DIR / "stability.csv", index=False)
-    print("noise.csv, shift.csv, subgroups.json, stability.csv ->", OUT_DIR)
+    inputs = [features_path(), *(features_path(s) for s in SNR_LEVELS_DB)]
+    inputs += [features_path(camera=c) for c in CAMERAS]
+    inputs.append(OUT_DIR / "oof.parquet")
+    (OUT_DIR / "robustness_provenance.json").write_text(
+        json.dumps(record(inputs), indent=2) + "\n", encoding="utf-8"
+    )
+    print("noise, shift, camera, gate, subgroups, stability + provenance ->", OUT_DIR)
 
 
 if __name__ == "__main__":

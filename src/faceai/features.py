@@ -31,6 +31,13 @@ exactly the stated level. White noise was tried first and rejected: across 0-50 
 <0.4 bpm and the test exercised nothing. Levels run from +20 dB (near-clean) to -10 dB,
 where heart rate itself is lost. Every draw is seeded from (SEED, subject, state, SNR),
 so results reproduce exactly.
+
+Camera sampling (robustness test): the .PW clock and each camera's meta/ frame timestamps
+share one wall clock and overlap for the full ~180 s, so the contact pulse can be read at
+every frame a camera actually captured (~30 fps FullHD/USB, ~24 fps Iriun, with their real
+jitter and gaps) and re-interpolated onto the uniform FS grid, exactly as a camera signal
+will be. This isolates the camera's TEMPORAL sampling only. A facial rPPG signal also
+differs in optics, site, shape and noise, which this cannot model.
 """
 
 from __future__ import annotations
@@ -69,6 +76,7 @@ NOISE_BAND_HZ = (0.5, 8.0)  # the elgendi cleaning band
 
 OUT_DIR = ROOT / "artifacts" / "features"
 STATE_CODE = {"before": 0, "after": 1}
+CAMERAS = ("FullHDwebcam", "USBVideo", "IriunWebcam")
 
 # Model inputs. Bookkeeping columns (n_peaks, valid_ibi_frac, clipped_frac) are kept in
 # the table for transparency but are not fed to models.
@@ -95,7 +103,10 @@ BOOKKEEPING = ["n_peaks", "valid_ibi_frac", "clipped_frac"]
 ALL_FEATURES = MODEL_FEATURES + BOOKKEEPING
 
 
-def features_path(snr_db: float | None = None):
+def features_path(snr_db: float | None = None, camera: str | None = None):
+    if camera is not None:
+        assert snr_db is None and camera in CAMERAS, (snr_db, camera)
+        return OUT_DIR / f"ppg_cam_{camera}.parquet"
     name = (
         "ppg_clean.parquet" if snr_db is None else f"ppg_snr{int(snr_db):+d}db.parquet"
     )
@@ -113,6 +124,34 @@ def load_session_ppg(patient_id: int, step: str) -> np.ndarray:
     in 0-255. Rate features are unaffected by polarity; morphology features are not.
     """
     _, v = F.read_pw(LOCAL_DIR / f"ppg/{patient_id}_{step}.PW").resample(FS)
+    return F.CLIP_HIGH - v
+
+
+def sample_at_frames(
+    t_ppg: np.ndarray, v_ppg: np.ndarray, t_frames: np.ndarray, fs: float = FS
+) -> np.ndarray:
+    """Read a waveform at camera frame times, then re-interpolate onto a uniform fs grid.
+
+    Frames outside the waveform's time span, or not strictly later than the previous
+    frame, are dropped. Times are seconds on one shared clock.
+    """
+    t = t_frames[(t_frames >= t_ppg[0]) & (t_frames <= t_ppg[-1])]
+    t = t[np.r_[True, np.diff(t) > 0]]
+    at_frames = np.interp(t, t_ppg, v_ppg)
+    grid = np.arange(t[0], t[-1], 1.0 / fs)
+    return np.interp(grid, t, at_frames)
+
+
+def load_camera_ppg(patient_id: int, step: str, camera: str) -> np.ndarray:
+    """The session's contact PPG as `camera` sampled it in time (see the module docstring).
+
+    Same polarity flip as `load_session_ppg`.
+    """
+    pw = F.read_pw(LOCAL_DIR / f"ppg/{patient_id}_{step}.PW")
+    meta = F.read_meta(LOCAL_DIR / f"meta/{patient_id}_{camera}_{step}.txt")
+    t_ppg = (pw.timestamp - pw.timestamp[0]) / np.timedelta64(1, "s")
+    t_frames = (meta.timestamp - pw.timestamp[0]) / np.timedelta64(1, "s")
+    v = sample_at_frames(t_ppg, pw.value.astype(np.float64), t_frames)
     return F.CLIP_HIGH - v
 
 
@@ -393,10 +432,15 @@ def dev_sessions() -> pd.DataFrame:
     return sess.sort_values(["patient_id", "step"]).reset_index(drop=True)
 
 
-def _one(patient_id: int, step: str, snr_db: float | None) -> dict:
+def _one(
+    patient_id: int, step: str, snr_db: float | None, camera: str | None = None
+) -> dict:
     row = {"patient_id": int(patient_id), "step": step}
     try:
-        x = load_session_ppg(patient_id, step)
+        if camera is None:
+            x = load_session_ppg(patient_id, step)
+        else:
+            x = load_camera_ppg(patient_id, step, camera)
     except ValueError:
         # An unparseable file (one known: 8706_after.PW, write-corrupted with a merged
         # timestamp, a NUL-byte run and a truncated last line). Reported, never repaired.
@@ -406,21 +450,27 @@ def _one(patient_id: int, step: str, snr_db: float | None) -> dict:
     return {**row, **extract(x), "readable": True}
 
 
-def build(snr_db: float | None = None, n_jobs: int = 12) -> pd.DataFrame:
+def build(
+    snr_db: float | None = None, camera: str | None = None, n_jobs: int = 12
+) -> pd.DataFrame:
     sess = dev_sessions()
     rows = Parallel(n_jobs=n_jobs)(
-        delayed(_one)(r.patient_id, r.step, snr_db) for r in sess.itertuples()
+        delayed(_one)(r.patient_id, r.step, snr_db, camera) for r in sess.itertuples()
     )
     return pd.DataFrame(rows)
 
 
-def write(df: pd.DataFrame, snr_db: float | None = None) -> None:
+def write(
+    df: pd.DataFrame, snr_db: float | None = None, camera: str | None = None
+) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(features_path(snr_db), index=False)
+    df.to_parquet(features_path(snr_db, camera), index=False)
 
 
-def load_features(snr_db: float | None = None) -> pd.DataFrame:
-    path = features_path(snr_db)
+def load_features(
+    snr_db: float | None = None, camera: str | None = None
+) -> pd.DataFrame:
+    path = features_path(snr_db, camera)
     if not path.exists():
         raise FileNotFoundError(f"{path} is missing - build it with `make features`")
     return pd.read_parquet(path)
@@ -431,17 +481,26 @@ def main() -> None:
 
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--noise", action="store_true", help="also build every SNR level")
+    ap.add_argument(
+        "--camera", action="store_true", help="also build every camera-sampled variant"
+    )
     args = ap.parse_args()
     log = {
         "built": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
         "levels": {},
     }
-    for snr in [None, *(SNR_LEVELS_DB if args.noise else ())]:
-        df = build(snr)
-        write(df, snr)
+    variants = [(None, None)]
+    variants += [(snr, None) for snr in (SNR_LEVELS_DB if args.noise else ())]
+    variants += [(None, cam) for cam in (CAMERAS if args.camera else ())]
+    for snr, cam in variants:
+        df = build(snr, cam)
+        write(df, snr, cam)
         unreadable = df.loc[~df["readable"], ["patient_id", "step"]]
         failed = int((df["readable"] & df["hr_mean_bpm"].isna()).sum())
-        key = "clean" if snr is None else f"{snr} dB"
+        if cam is not None:
+            key = f"camera {cam}"
+        else:
+            key = "clean" if snr is None else f"{snr} dB"
         log["levels"][key] = {
             "sessions": len(df),
             "unreadable_files": [
