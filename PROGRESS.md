@@ -83,9 +83,13 @@ data, no video, test set untouched. Report: `reports/03b_extensions.md`; `make p
       RR ±3/min and SpO₂ ARMS shown NOT to be meaningful passes here.
 - [x] Within-person change (`clinical`): stiffness tracks weakly (ρ ≈ 0.14), RR and SpO₂ do
       not; heart-rate positive control ρ = 0.38.
-- [x] Run provenance (`faceai.provenance`) in every results file; 64 tests green.
+- [x] Run provenance (`faceai.provenance`) in every results file.
 - [x] rPPG-Toolbox RAIL licence restriction recorded in `CLAUDE.md` (blocks its use for
       biomarker inference pending legal review).
+- [x] Recording-length test (`features --duration`, `robustness`): 60 s keeps most of the
+      value, 30 s does not (Graphyti, Grand Finale panel 2).
+- [x] Explanations with fold stability (`explain`): age ← pulse shape; stiffness ← heart
+      rate first; HbA1c/cholesterol have none (MorphTwin). 68 tests green.
 
 ## Phase 4 — rPPG extraction + signal quality (cached, resumable)
 DoD: `reports/04_rppg.md` with rPPG-vs-contact HR MAE by camera/state and SQI distributions; a
@@ -124,6 +128,8 @@ Proposed from the Pinnacle Prize review (2026-10-13), for approval at the Phase 
   RAIL §3.2(c)(vi) condition if any toolbox code is ever used).
 - Senior-friendly, multilingual UI - large text, high contrast, one-touch flow; English,
   Mandarin, Malay, Tamil (ShopFrontSG, SymSkin Senior Mode).
+- A scan of at least 60 s, with the app saying why when a recording is too short
+  (Phase 3b recording-length test).
 
 ## Phase 13 — Model cards, dataset card, report scaffold, team README
 DoD: `MODEL_CARDS/`, `DATASET_CARD.md`, `report/`, `README.md`, `CONTRIBUTING.md` all present.

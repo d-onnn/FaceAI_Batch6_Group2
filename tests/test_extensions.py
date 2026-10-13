@@ -89,3 +89,49 @@ def test_provenance_records_commit_split_and_inputs():
     assert len(p["git_commit"]) == 40
     assert p["splits_assignment_sha256"].startswith("08f6fb63")
     assert list(p["inputs_sha256"]) == ["configs/targets.yaml"]
+
+
+# ------------------------------------------------------------------ recording length
+def test_shortened_recordings_cannot_give_respiration_under_40_s():
+    nk = pytest.importorskip("neurokit2")
+    x = np.asarray(
+        nk.ppg_simulate(duration=180, sampling_rate=100, heart_rate=80, random_state=3)
+    )
+    short, longer = FT.extract(x[: 30 * 100]), FT.extract(x[: 60 * 100])
+    assert np.isnan(short["resp_rate_fused"])  # 30 s < RESP_MIN_S, by design
+    assert np.isfinite(short["hr_mean_bpm"])  # 40 beats at 80 bpm is enough for HR
+    assert np.isfinite(longer["resp_rate_fused"])
+
+
+def test_duration_tables_cover_the_same_sessions_as_clean():
+    if not FT.features_path(duration_s=FT.DURATIONS_S[0]).exists():
+        pytest.skip("duration features not built - run `make features`")
+    clean = FT.load_features()
+    for d in FT.DURATIONS_S:
+        f = FT.load_features(duration_s=d)
+        assert f[["patient_id", "step"]].equals(clean[["patient_id", "step"]])
+
+
+# --------------------------------------------------------------------- explanations
+def test_grouped_importance_finds_the_only_input_that_matters():
+    from sklearn.linear_model import LinearRegression
+
+    from faceai import explain
+
+    rng = np.random.default_rng(0)
+    n = 400
+    X = pd.DataFrame({c: rng.normal(size=n) for c in FT.MODEL_FEATURES})
+    X["age"], X["sex_m"], X["bmi"] = rng.normal(size=n), rng.integers(0, 2, n), 0.0
+    y = 3.0 * X["apg_b_a"].to_numpy() + rng.normal(scale=0.1, size=n)
+    est = LinearRegression().fit(X, y)
+    imp = explain.grouped_importance(est, X, y, np.random.default_rng(1))
+    assert max(imp, key=imp.get) == "pulse shape"
+    assert all(abs(v) < 0.05 for g, v in imp.items() if g != "pulse shape")
+
+
+def test_explanation_groups_partition_the_ppg_features():
+    from faceai import explain
+
+    cols = [c for g in explain.PPG_GROUPS for c in explain.GROUPS[g]]
+    assert sorted(cols) == sorted(FT.MODEL_FEATURES)
+    assert len(cols) == len(set(cols))

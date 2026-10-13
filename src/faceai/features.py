@@ -38,6 +38,12 @@ every frame a camera actually captured (~30 fps FullHD/USB, ~24 fps Iriun, with 
 jitter and gaps) and re-interpolated onto the uniform FS grid, exactly as a camera signal
 will be. This isolates the camera's TEMPORAL sampling only. A facial rPPG signal also
 differs in optics, site, shape and noise, which this cannot model.
+
+Recording length (robustness test): features from only the first 30, 60 or 120 s of the
+clean contact PPG - how long a user would have to hold still. The extractor still needs
+MIN_BEATS valid beats, so a short recording at a low heart rate yields NaN features; that
+is reported, not worked around. Post-exercise heart rate falls over the 3 minutes, so a
+short window also sees a different physiological state from the full recording.
 """
 
 from __future__ import annotations
@@ -69,6 +75,7 @@ IBI_LOCAL_WINDOW = 11  # beats in that rolling median
 RESP_BAND_HZ = (0.2, 0.5)
 RESP_PREFILTER_HZ = (0.2, 0.6)
 RESP_FS = 4.0  # beat series are interpolated onto this grid for spectral analysis
+RESP_MIN_S = 40.0  # shortest beat series given a respiration rate (8 breaths at 12/min)
 MIN_BEATS = 30  # fewer valid beats than this and the session's features are NaN
 ONSET_SEARCH_S = 0.4  # the beat onset is the minimum within this window before a peak
 SNR_LEVELS_DB = (20, 10, 5, 0, -5, -10)  # in-band, see the module docstring
@@ -77,6 +84,7 @@ NOISE_BAND_HZ = (0.5, 8.0)  # the elgendi cleaning band
 OUT_DIR = ROOT / "artifacts" / "features"
 STATE_CODE = {"before": 0, "after": 1}
 CAMERAS = ("FullHDwebcam", "USBVideo", "IriunWebcam")
+DURATIONS_S = (30, 60, 120)
 
 # Model inputs. Bookkeeping columns (n_peaks, valid_ibi_frac, clipped_frac) are kept in
 # the table for transparency but are not fed to models.
@@ -103,7 +111,14 @@ BOOKKEEPING = ["n_peaks", "valid_ibi_frac", "clipped_frac"]
 ALL_FEATURES = MODEL_FEATURES + BOOKKEEPING
 
 
-def features_path(snr_db: float | None = None, camera: str | None = None):
+def features_path(
+    snr_db: float | None = None,
+    camera: str | None = None,
+    duration_s: int | None = None,
+):
+    if duration_s is not None:
+        assert snr_db is None and camera is None and duration_s in DURATIONS_S
+        return OUT_DIR / f"ppg_first{duration_s:03d}s.parquet"
     if camera is not None:
         assert snr_db is None and camera in CAMERAS, (snr_db, camera)
         return OUT_DIR / f"ppg_cam_{camera}.parquet"
@@ -192,7 +207,7 @@ def _resp_rate(t: np.ndarray, v: np.ndarray) -> float:
     if len(t) < MIN_BEATS:
         return np.nan
     grid = np.arange(t[0], t[-1], 1.0 / RESP_FS)
-    if len(grid) < 4 * RESP_FS * 10:  # need at least ~10 s of series
+    if len(grid) < RESP_MIN_S * RESP_FS:
         return np.nan
     series = signal.detrend(interpolate.interp1d(t, v, kind="linear")(grid))
     lo, hi = RESP_PREFILTER_HZ
@@ -433,7 +448,11 @@ def dev_sessions() -> pd.DataFrame:
 
 
 def _one(
-    patient_id: int, step: str, snr_db: float | None, camera: str | None = None
+    patient_id: int,
+    step: str,
+    snr_db: float | None,
+    camera: str | None = None,
+    duration_s: int | None = None,
 ) -> dict:
     row = {"patient_id": int(patient_id), "step": step}
     try:
@@ -447,30 +466,41 @@ def _one(
         return {**row, **dict.fromkeys(ALL_FEATURES, np.nan), "readable": False}
     if snr_db is not None:
         x = add_noise(x, snr_db, noise_rng(patient_id, step, snr_db))
+    if duration_s is not None:
+        x = x[: int(duration_s * FS)]
     return {**row, **extract(x), "readable": True}
 
 
 def build(
-    snr_db: float | None = None, camera: str | None = None, n_jobs: int = 12
+    snr_db: float | None = None,
+    camera: str | None = None,
+    duration_s: int | None = None,
+    n_jobs: int = 12,
 ) -> pd.DataFrame:
     sess = dev_sessions()
     rows = Parallel(n_jobs=n_jobs)(
-        delayed(_one)(r.patient_id, r.step, snr_db, camera) for r in sess.itertuples()
+        delayed(_one)(r.patient_id, r.step, snr_db, camera, duration_s)
+        for r in sess.itertuples()
     )
     return pd.DataFrame(rows)
 
 
 def write(
-    df: pd.DataFrame, snr_db: float | None = None, camera: str | None = None
+    df: pd.DataFrame,
+    snr_db: float | None = None,
+    camera: str | None = None,
+    duration_s: int | None = None,
 ) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(features_path(snr_db, camera), index=False)
+    df.to_parquet(features_path(snr_db, camera, duration_s), index=False)
 
 
 def load_features(
-    snr_db: float | None = None, camera: str | None = None
+    snr_db: float | None = None,
+    camera: str | None = None,
+    duration_s: int | None = None,
 ) -> pd.DataFrame:
-    path = features_path(snr_db, camera)
+    path = features_path(snr_db, camera, duration_s)
     if not path.exists():
         raise FileNotFoundError(f"{path} is missing - build it with `make features`")
     return pd.read_parquet(path)
@@ -484,20 +514,28 @@ def main() -> None:
     ap.add_argument(
         "--camera", action="store_true", help="also build every camera-sampled variant"
     )
+    ap.add_argument(
+        "--duration",
+        action="store_true",
+        help="also build every shortened-recording variant",
+    )
     args = ap.parse_args()
     log = {
         "built": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
         "levels": {},
     }
-    variants = [(None, None)]
-    variants += [(snr, None) for snr in (SNR_LEVELS_DB if args.noise else ())]
-    variants += [(None, cam) for cam in (CAMERAS if args.camera else ())]
-    for snr, cam in variants:
-        df = build(snr, cam)
-        write(df, snr, cam)
+    variants = [(None, None, None)]
+    variants += [(snr, None, None) for snr in (SNR_LEVELS_DB if args.noise else ())]
+    variants += [(None, cam, None) for cam in (CAMERAS if args.camera else ())]
+    variants += [(None, None, d) for d in (DURATIONS_S if args.duration else ())]
+    for snr, cam, dur in variants:
+        df = build(snr, cam, dur)
+        write(df, snr, cam, dur)
         unreadable = df.loc[~df["readable"], ["patient_id", "step"]]
         failed = int((df["readable"] & df["hr_mean_bpm"].isna()).sum())
-        if cam is not None:
+        if dur is not None:
+            key = f"first {dur} s"
+        elif cam is not None:
             key = f"camera {cam}"
         else:
             key = "clean" if snr is None else f"{snr} dB"

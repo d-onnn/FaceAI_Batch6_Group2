@@ -2,7 +2,7 @@
 
     python -m faceai.robustness        # or: make robustness
 
-Robustness asks whether a result survives conditions it was not fitted under. Six tests,
+Robustness asks whether a result survives conditions it was not fitted under. Seven tests,
 all on dev folds (the held-out test set is not touched):
 
   noise injection   models fitted on CLEAN training-fold features score validation folds
@@ -20,6 +20,8 @@ all on dev folds (the held-out test set is not touched):
                     `faceai.features`): models fitted on clean features score camera-sampled
                     ones, and are also refitted on camera-sampled features. Isolates the
                     camera's temporal sampling only - not its optics.
+  recording length  the same two comparisons on features from only the first 30, 60 or
+                    120 s of each recording: how long must a user hold still?
   quality gate      "verify every recording": a model predicts only when the recording's
                     template-match quality is at least the 5th percentile of its own training
                     fold, and otherwise falls back to the training-fold mean (abstains).
@@ -33,6 +35,7 @@ raw signals and is deferred to the Phase 8 deep models.
 from __future__ import annotations
 
 import json
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -49,6 +52,7 @@ from faceai.cv import (
 )
 from faceai.features import (
     CAMERAS,
+    DURATIONS_S,
     MODEL_FEATURES,
     SNR_LEVELS_DB,
     features_path,
@@ -95,6 +99,17 @@ def camera_tables() -> dict[str, pd.DataFrame]:
     for cam in CAMERAS:
         f = load_features(camera=cam)
         out[f"camera {cam}"] = f[f["readable"]].set_index(["patient_id", "step"])[
+            MODEL_FEATURES
+        ]
+    return out
+
+
+def duration_tables() -> dict[str, pd.DataFrame]:
+    """Shortened-recording features, keyed like `session_table` rows."""
+    out = {}
+    for d in DURATIONS_S:
+        f = load_features(duration_s=d)
+        out[f"first {d} s"] = f[f["readable"]].set_index(["patient_id", "step"])[
             MODEL_FEATURES
         ]
     return out
@@ -169,7 +184,8 @@ def _shift_fold(t: pd.DataFrame, target: str, fold: int) -> list[dict]:
     return rows
 
 
-def _camera_fold(t: pd.DataFrame, cams: dict, target: str, fold: int) -> list[dict]:
+def _variant_fold(t: pd.DataFrame, cams: dict, target: str, fold: int) -> list[dict]:
+    """Clean-fitted models scored on each variant, plus models refitted on that variant."""
     tr, va = t[t["fold"] != fold], t[t["fold"] == fold]
     rows = []
     for name in ROBUST_MODELS:  # fitted on clean contact features
@@ -186,19 +202,26 @@ def _camera_fold(t: pd.DataFrame, cams: dict, target: str, fold: int) -> list[di
                     "val_mae": mae(v[target], est.predict(v[cols])),
                 }
             )
-    for level, feats in cams.items():  # refitted on the same camera's sampling
+    for level, feats in cams.items():  # refitted on the same variant
         tc = _with_features(t, feats)
         trc, vac = tc[tc["fold"] != fold], tc[tc["fold"] == fold]
         for name in REFIT_MODELS:
-            est, cols = _fit(name, trc, target)
+            with warnings.catch_warnings():
+                # Expected for the 30-s variant: the respiration features are NaN by
+                # design (RESP_MIN_S = 40 s) and the imputer drops all-empty columns.
+                warnings.filterwarnings(
+                    "ignore", message="Skipping features without any observed values"
+                )
+                est, cols = _fit(name, trc, target)
+                pred = est.predict(vac[cols])
             rows.append(
                 {
                     "target": target,
                     "model": name,
                     "fold": fold,
-                    "trained_on": "same camera",
+                    "trained_on": "same variant",
                     "level": level,
-                    "val_mae": mae(vac[target], est.predict(vac[cols])),
+                    "val_mae": mae(vac[target], pred),
                 }
             )
     return rows
@@ -324,12 +347,15 @@ def main() -> None:
     pd.DataFrame([r for rows in res for r in rows]).to_csv(
         OUT_DIR / "shift.csv", index=False
     )
-    cams = camera_tables()
-    res = Parallel(n_jobs=12)(delayed(_camera_fold)(t, cams, tg, k) for tg, k in jobs)
-    pd.DataFrame([r for rows in res for r in rows]).to_csv(
-        OUT_DIR / "camera.csv", index=False
-    )
-    variants = {"clean": None, **noisy, **cams}
+    cams, durs = camera_tables(), duration_tables()
+    for name, var in [("camera", cams), ("duration", durs)]:
+        res = Parallel(n_jobs=12)(
+            delayed(_variant_fold)(t, var, tg, k) for tg, k in jobs
+        )
+        pd.DataFrame([r for rows in res for r in rows]).to_csv(
+            OUT_DIR / f"{name}.csv", index=False
+        )
+    variants = {"clean": None, **noisy, **cams, **durs}
     res = Parallel(n_jobs=12)(delayed(_gate_fold)(t, variants, tg, k) for tg, k in jobs)
     pd.DataFrame([r for rows in res for r in rows]).to_csv(
         OUT_DIR / "gate.csv", index=False
@@ -339,11 +365,15 @@ def main() -> None:
     stability(oof).to_csv(OUT_DIR / "stability.csv", index=False)
     inputs = [features_path(), *(features_path(s) for s in SNR_LEVELS_DB)]
     inputs += [features_path(camera=c) for c in CAMERAS]
+    inputs += [features_path(duration_s=d) for d in DURATIONS_S]
     inputs.append(OUT_DIR / "oof.parquet")
     (OUT_DIR / "robustness_provenance.json").write_text(
         json.dumps(record(inputs), indent=2) + "\n", encoding="utf-8"
     )
-    print("noise, shift, camera, gate, subgroups, stability + provenance ->", OUT_DIR)
+    print(
+        "noise, shift, camera, duration, gate, subgroups, stability + provenance ->",
+        OUT_DIR,
+    )
 
 
 if __name__ == "__main__":

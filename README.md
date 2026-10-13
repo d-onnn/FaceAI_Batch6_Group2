@@ -30,7 +30,7 @@ Then, from the activated environment, every number and figure in `reports/` is r
 
 ```
 make splits    # Phase 2: subject-level splits (also committed in artifacts/)
-make test      # 64 tests, including the subject-leakage guard
+make test      # 68 tests, including the subject-leakage guard
 make phase3    # Phase 3 + 3b: features, 5-fold CV, overfitting, robustness, clinical, reports
 ```
 

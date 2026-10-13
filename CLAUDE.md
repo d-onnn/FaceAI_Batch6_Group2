@@ -182,3 +182,11 @@ Use `faceai.data.formats`; do not re-parse these by hand.
   ISO 80601-2-61 compliance cannot be assessed on this data. Never cite either as a pass.
 - **Diabetes-range HbA1c (≥ 6.5%): 14 dev subjects.** Demographics rank them (AUROC 0.89);
   no PPG model's prediction ever crosses 6.5%, so sensitivity at the cut-off is zero.
+- **Recordings need ≥ 60 s.** From the first 30 s of a session: 7.9% give no heart rate (fewer
+  than `MIN_BEATS` = 30 valid beats), respiration is never estimated (`RESP_MIN_S` = 40 s of
+  beats; the code always required this, the old comment wrongly said ~10 s), and the age
+  model is no better than the constant. 60 s recovers most of the full-length accuracy.
+- **What drives the models (grouped permutation importance, `faceai.explain`):** age →
+  pulse shape (stable across folds); arterial stiffness → heart rate first, so test that
+  stiffness adds anything beyond heart rate before reporting it; HbA1c and cholesterol →
+  near-zero, fold-unstable importances (no explanation to give).

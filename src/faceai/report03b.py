@@ -2,10 +2,11 @@
 
     python -m faceai.report03b        # or: make report03b
 
-Four extensions of the Phase 3 robustness work, each adapted from an idea reviewed on the
-2026 NTU Chua Thian Poh Pinnacle Prize posters (see the "Origin" line of each section):
-a quality gate, a camera-timing stress test, a clinical-threshold view and a
-within-person-change test. Reads only saved artifacts; dev folds only.
+Six extensions of the Phase 3 robustness work, each adapted from an idea reviewed on the
+2026 NTU Chua Thian Poh Pinnacle Prize Grand Finale posters (see the "Origin" line of each
+section): a quality gate, a camera-timing test, a recording-length test, a clinical-threshold
+view, a within-person-change test and stability-checked explanations. Reads only saved
+artifacts; dev folds only.
 """
 
 from __future__ import annotations
@@ -16,10 +17,17 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 from faceai.cv import OUT_DIR
 from faceai.data.hub import ROOT
-from faceai.features import CAMERAS, MODEL_FEATURES, SNR_LEVELS_DB, load_features
+from faceai.features import (
+    CAMERAS,
+    DURATIONS_S,
+    MODEL_FEATURES,
+    SNR_LEVELS_DB,
+    load_features,
+)
 from faceai.report03 import (
     BLUE,
     COLOR,
@@ -39,6 +47,7 @@ REPORT = ROOT / "reports" / "03b_extensions.md"
 FOCUS = ["age", "respiratory_rate", "arterial_stiffness"]
 NOISE_LEVELS = ["clean", *[f"{s:+d} dB" for s in SNR_LEVELS_DB]]
 CAM_LEVELS = [f"camera {c}" for c in CAMERAS]
+DUR_LEVELS = [f"first {d} s" for d in DURATIONS_S]
 CAM_SHORT = {
     "clean": "contact\n100 Hz",
     "camera FullHDwebcam": "FullHD",
@@ -161,7 +170,7 @@ def fig_camera(cam: pd.DataFrame, res: dict) -> str:
     for ax, t in zip(axes, FOCUS, strict=True):
         d = cam[(cam["target"] == t) & (cam["model"] == "LightGBM")]
         a = d[d["trained_on"] == "clean"].groupby("level")["val_mae"].mean()
-        b = d[d["trained_on"] == "same camera"].groupby("level")["val_mae"].mean()
+        b = d[d["trained_on"] == "same variant"].groupby("level")["val_mae"].mean()
         a, b = a.reindex(levels), b.reindex(levels)
         ax.axhline(res[t]["models"]["Mean"]["mae"], color=MUTED, linewidth=1.0)
         ax.plot(x, a, "o", color=ORANGE, markersize=7, label="Fitted on contact PPG")
@@ -259,13 +268,14 @@ def prov_lines(name: str, p: dict) -> list[str]:
 
 def gate_section(gate: pd.DataFrame, figs: dict) -> list[str]:
     g = gate[gate["headline"]]
-    levels = NOISE_LEVELS + CAM_LEVELS
+    levels = NOISE_LEVELS + CAM_LEVELS + DUR_LEVELS
     shown = [*FOCUS, "bmi", "hba1c", "cholesterol"]
     mean = g.groupby(["target", "model", "level"])[
         ["coverage", "mae_ungated", "mae_gated"]
     ].mean()
     cov = mean["coverage"].groupby("level").mean().reindex(levels)
     heads = ["clean", *[tick(v) for v in NOISE_LEVELS[1:]], "FullHD", "USB", "Iriun"]
+    heads += [f"{d} s" for d in DURATIONS_S]
     cov_row = "| Recordings predicted | " + " | ".join(f"{100 * c:.1f}%" for c in cov)
     rows = []
     for t in shown:
@@ -300,9 +310,9 @@ def gate_section(gate: pd.DataFrame, figs: dict) -> list[str]:
         "",
         f"![gate]({figs['gate']})",
         "",
-        "Validation MAE, **no gate → gated** (noise columns are in-band SNR in dB; the last",
-        "three are the camera-timed inputs of section 2). Coverage is the same for every target",
-        "because the gate looks only at signal quality.",
+        "Validation MAE, **no gate → gated**. Noise columns are in-band SNR in dB, then the",
+        "camera-timed inputs (section 2) and the shortened recordings (section 3). Coverage is",
+        "the same for every target because the gate looks only at signal quality.",
         "",
         "| Target, model | " + " | ".join(heads) + " |",
         "|" + "---|" * (len(heads) + 1),
@@ -388,8 +398,8 @@ def camera_section(cam: pd.DataFrame, figs: dict) -> list[str]:
         ),
         f"{a[('clean', 'camera IriunWebcam')]:.2f} at Iriun's ~24 fps — and refitting on the same timing",
         (
-            f"recovers it ({a[('same camera', 'camera FullHDwebcam')]:.2f} /"
-            f" {a[('same camera', 'camera IriunWebcam')]:.2f}). The contact-to-camera gap is"
+            f"recovers it ({a[('same variant', 'camera FullHDwebcam')]:.2f} /"
+            f" {a[('same variant', 'camera IriunWebcam')]:.2f}). The contact-to-camera gap is"
         ),
         "therefore not mainly about frame timing: Phase 4 should spend its effort on optical",
         "noise and signal quality, and train on the signal it will be deployed on.",
@@ -423,7 +433,7 @@ def clinical_section(clin: dict, figs: dict) -> list[str]:
     within = " | ".join(f"{100 * rr['share_within'][m]:.1f}%" for m in MODELS6)
     arms = " | ".join(f"{sp['arms'][m]:.2f}" for m in MODELS6)
     return [
-        "## 3. Clinical thresholds — judged against recognised standards",
+        "## 4. Clinical thresholds — judged against recognised standards",
         "",
         "_Origin: BetterMush (built around the IDDSI framework) and NatureRisk (built around",
         "TNFD, with every conclusion linked to its evidence)._",
@@ -495,7 +505,7 @@ def change_section(clin: dict, figs: dict) -> list[str]:
         "Direction agrees",
     ]
     return [
-        "## 4. Within-person change — does the model follow the person?",
+        "## 5. Within-person change — does the model follow the person?",
         "",
         "_Origin: SymSkin (an “AI health memory” that tracks each user against their own",
         "history)._",
@@ -519,11 +529,270 @@ def change_section(clin: dict, figs: dict) -> list[str]:
     ]
 
 
+def duration_feature_table() -> pd.DataFrame:
+    clean = load_features()
+    clean = clean[clean["readable"]].set_index(["patient_id", "step"])
+    rows = []
+    for d in DURATIONS_S:
+        f = load_features(duration_s=d)
+        f = f[f["readable"]].set_index(["patient_id", "step"]).loc[clean.index]
+        ok = f["hr_mean_bpm"].notna()
+        rows.append(
+            {
+                "length": f"first {d} s",
+                "no heart rate (%)": 100 * float((~ok).mean()),
+                "respiration available (%)": 100
+                * float(f["resp_rate_fused"].notna().mean()),
+                "HR vs full, median |diff| (bpm)": float(
+                    (f["hr_mean_bpm"] - clean["hr_mean_bpm"]).abs()[ok].median()
+                ),
+                "APG b/a r vs full": float(f["apg_b_a"].corr(clean["apg_b_a"])),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def fig_duration(dur: pd.DataFrame, res: dict) -> str:
+    fig, axes = plt.subplots(1, 3, figsize=(10.5, 3.5))
+    x = [*DURATIONS_S, 180]
+    levels = [*DUR_LEVELS, "clean"]
+    for ax, t in zip(axes, FOCUS, strict=True):
+        d = dur[(dur["target"] == t) & (dur["model"] == "LightGBM")]
+        a = (
+            d[d["trained_on"] == "clean"]
+            .groupby("level")["val_mae"]
+            .mean()
+            .reindex(levels)
+        )
+        b = d[d["trained_on"] == "same variant"].groupby("level")["val_mae"].mean()
+        b = b.reindex(levels)
+        b.loc["clean"] = a.loc[
+            "clean"
+        ]  # at full length the refitted model is the original
+        ax.axhline(res[t]["models"]["Mean"]["mae"], color=MUTED, linewidth=1.0)
+        ax.plot(
+            x, a, "-o", color=ORANGE, markersize=5, label="Fitted on 180 s recordings"
+        )
+        ax.plot(
+            x, b, "-o", color=BLUE, markersize=5, label="Refitted on the same length"
+        )
+        ax.set_xticks(x)
+        ax.set_xlabel("Recording used, seconds")
+        ax.set_title(title_of(t), loc="left")
+    axes[0].set_ylabel("Validation MAE (LightGBM)")
+    axes[0].legend(loc="lower left", bbox_to_anchor=(0, 1.13), ncol=2)
+    suptitle(
+        fig,
+        "Recording length: how long must a user hold still? (grey = constant)",
+        y=1.13,
+    )
+    return save(fig, "03b_recording_length.png")
+
+
+def duration_section(dur: pd.DataFrame, gate: pd.DataFrame, figs: dict) -> list[str]:
+    ft = duration_feature_table()
+    ct = dur.groupby(["target", "trained_on", "model", "level"])["val_mae"].mean()
+    ct = ct.unstack("level")[[*DUR_LEVELS, "clean"]].reset_index()
+    ct = ct[ct["model"] != "Mean"]
+    ct["target"] = ct["target"].map(SHORT)
+    ct.columns = [
+        "Target",
+        "Fitted on",
+        "Model",
+        "30 s",
+        "60 s",
+        "120 s",
+        "180 s (full)",
+    ]
+    a = (
+        dur[(dur["target"] == "age") & (dur["model"] == "LightGBM")]
+        .groupby(["trained_on", "level"])["val_mae"]
+        .mean()
+    )
+    g = gate[
+        gate["headline"] & (gate["model"] == "LightGBM") & (gate["target"] == "age")
+    ]
+    cov30 = 100 * float(g[g["level"] == "first 30 s"]["coverage"].mean())
+    f30 = ft.set_index("length").loc["first 30 s"]
+    return [
+        "## 3. Recording length — how long must a user hold still?",
+        "",
+        "_Origin: Graphyti (controllable, reproducible scenario variations; here the controlled",
+        "factor is the recording length a phone user would accept)._",
+        "",
+        "Features from only the first 30, 60 or 120 s of each 180-s contact recording, scored by",
+        "models fitted on full recordings and by models refitted on the same length.",
+        "",
+        f"![duration]({figs['duration']})",
+        "",
+        *md_table(ft.round(3)),
+        "",
+        *md_table(ct.round(3).fillna("—")),
+        "",
+        "**Reading it.** Sixty seconds keeps most of the value; thirty does not. At 30 s,",
+        f"{f30['no heart rate (%)']:.1f}% of sessions yield no heart rate (fewer than 30 valid beats at a low",
+        "heart rate), no respiration estimate is possible (it needs at least 40 s of beats), and",
+        f"the age model fitted on full recordings is no better than the constant ({a[('clean', 'first 30 s')]:.2f}",
+        f"vs {_mean_const(dur, 'age'):.2f} years); refitting on 30 s recovers part of it ({a[('same variant', 'first 30 s')]:.2f}). At 60 s",
+        f"it is {a[('clean', 'first 60 s')]:.2f}, close to the full {a[('clean', 'clean')]:.2f}. The quality gate predicts only",
+        f"{cov30:.0f}% of 30-s recordings. For the Phase 12 demo this means a scan of at least",
+        "60 s, with the app saying so rather than returning a weaker estimate quietly.",
+        "",
+    ]
+
+
+def _mean_const(df: pd.DataFrame, target: str) -> float:
+    d = df[
+        (df["target"] == target) & (df["model"] == "Mean") & (df["level"] == "clean")
+    ]
+    return float(d["val_mae"].mean())
+
+
+def fig_explain(imp: pd.DataFrame) -> str:
+    targets = ["age", "arterial_stiffness", "respiratory_rate", "hba1c"]
+    fig, axes = plt.subplots(2, 2, figsize=(10.5, 6.6))
+    for ax, t in zip(axes.flat, targets, strict=True):
+        d = imp[imp["target"] == t]
+        order = (
+            d.groupby("group")["mae_rise"]
+            .mean()
+            .sort_values(ascending=True)
+            .index.tolist()
+        )
+        for o, m in zip([0.15, -0.15], ["Ridge (L2)", "LightGBM"], strict=True):
+            s = (
+                d[d["model"] == m]
+                .groupby("group")["mae_rise"]
+                .agg(["mean", "min", "max"])
+            )
+            s = s.reindex(order)
+            y = np.arange(len(order)) + o
+            ax.hlines(y, s["min"], s["max"], color=COLOR[m], linewidth=1.6)
+            ax.plot(s["mean"], y, "o", color=COLOR[m], markersize=5, label=m)
+        ax.axvline(0, color=INK2, linewidth=1.0)
+        ax.set_yticks(range(len(order)))
+        ax.set_yticklabels(order, fontsize=8)
+        ax.grid(axis="y", visible=False)
+        ax.set_title(title_of(t), loc="left")
+        ax.set_xlabel("Rise in validation MAE when the group is shuffled")
+    axes[0, 0].legend(loc="lower left", bbox_to_anchor=(0, 1.1), ncol=2)
+    suptitle(
+        fig,
+        "Which inputs drive each model? (dot = mean of 5 folds; bar = fold range)",
+        y=1.04,
+    )
+    fig.tight_layout()
+    return save(fig, "03b_explanations.png")
+
+
+def explain_section(
+    imp: pd.DataFrame, stab: pd.DataFrame, oof: pd.DataFrame, figs: dict
+) -> list[str]:
+    st = stab.set_index(["target", "model"])
+    top3 = []
+    for (t, m), d in imp.groupby(["target", "model"]):
+        s = d.groupby("group")["mae_rise"].mean().sort_values(ascending=False).head(3)
+        row = st.loc[(t, m)]
+        top3.append([
+            SHORT[t], m, ", ".join(f"{g} ({v:.3f})" for g, v in s.items()),
+            f"{row['rho_mean']:.2f}", f"{row['rho_min']:.2f}",
+            "yes" if row["top_group_in_every_fold"] else "no",
+        ])  # fmt: skip
+    cols = [
+        "Target", "Model", "Top 3 groups (MAE rise)", "Fold agreement ρ (mean)",
+        "ρ (worst pair)", "Top group the same in every fold",
+    ]  # fmt: skip
+    # Claims below are checked against the data; generation fails if one stops holding.
+    assert (st.loc["age"]["top_group"] == "pulse shape").all()
+    assert st.loc[("age", "LightGBM"), "top_group_in_every_fold"]
+    assert (st.loc["arterial_stiffness"]["top_group"] == "heart rate").all()
+    assert st.loc[("arterial_stiffness", "Ridge (L2)"), "top_group_in_every_fold"]
+    assert (st.loc["respiratory_rate"]["top_group"] == "beat statistics").all()
+    weak = st.loc[["hba1c", "cholesterol"], "rho_mean"]
+    assert (weak < 0.5).all()
+    state_rows = []
+    for t in ["respiratory_rate", "arterial_stiffness"]:
+        d = oof[oof["target"] == t]
+        means = d.groupby("step")[["y", "Ridge (L2)", "LightGBM"]].mean()
+        shift = means.loc["after"] - means.loc["before"]
+        for m in ["Ridge (L2)", "LightGBM"]:
+            rhos = [
+                stats.spearmanr(
+                    d.loc[d["step"] == s, m], d.loc[d["step"] == s, "y"]
+                ).statistic
+                for s in ["before", "after"]
+            ]
+            state_rows.append([
+                SHORT[t], m, f"{shift['y']:+.2f}", f"{shift[m]:+.2f}",
+                f"{rhos[0]:+.3f}", f"{rhos[1]:+.3f}",
+            ])  # fmt: skip
+    state_cols = [
+        "Target", "Model", "Label shift, rest → post", "Predicted shift",
+        "Within-rest ranking ρ", "Within-post ranking ρ",
+    ]  # fmt: skip
+    rr_rho = [float(r[4]) for r in state_rows[:2]] + [
+        float(r[5]) for r in state_rows[:2]
+    ]
+    assert min(rr_rho) > 0
+    return [
+        "## 6. Explanations — why, not just what",
+        "",
+        "_Origin: MorphTwin (“explains congestion” instead of only showing it; its Diagnosis",
+        "agent explains likely causes). Stability check from the earlier literature triage: model",
+        "diagnostics are often less reliable than assumed._",
+        "",
+        "Grouped permutation importance: on each validation fold, one group of inputs is shuffled",
+        "across sessions (columns in a group together) and the rise in MAE is recorded; 20",
+        "repeats per group. Fold agreement is the Spearman correlation between two folds' group",
+        "importances, over all 10 fold pairs. An explanation that changes between folds is not a",
+        "finding.",
+        "",
+        f"![explain]({figs['explain']})",
+        "",
+        *md_table(pd.DataFrame(top3, columns=cols)),
+        "",
+        "Does the model know the person, or only the state? Mean OOF predictions and ranking",
+        "within each state:",
+        "",
+        *md_table(pd.DataFrame(state_rows, columns=state_cols)),
+        "",
+        "**Reading it.**",
+        "",
+        "- **Age** is driven by **pulse shape** (rise time, half-height width, systolic fraction,",
+        (
+            "  APG b/a) in both models; fold agreement ρ is"
+            f" {st.loc[('age', 'LightGBM'), 'rho_mean']:.2f} (LightGBM, top group in every fold) and"
+            f" {st.loc[('age', 'Ridge (L2)'), 'rho_mean']:.2f}"
+        ),
+        "  (Ridge). Physiologically plausible: second-derivative pulse waves track vascular",
+        "  ageing (Takazawa et al., 1998, doi:10.1161/01.HYP.32.2.365).",
+        "- **Arterial stiffness** is driven first by **heart rate** in both models (in every fold",
+        (
+            f"  for Ridge, ρ {st.loc[('arterial_stiffness', 'Ridge (L2)'), 'rho_mean']:.2f}; less stable"
+            f" for LightGBM, ρ {st.loc[('arterial_stiffness', 'LightGBM'), 'rho_mean']:.2f}). Before any"
+        ),
+        "  stiffness result is reported, test whether PPG adds anything beyond heart rate itself.",
+        "- **Respiratory rate** leans on beat statistics more than on the respiration estimates.",
+        "  The models predict only a small part of the post-exercise rise but do rank people",
+        "  weakly within the same state, so they are not merely detecting rest vs exercise.",
+        "- **HbA1c and cholesterol** have near-zero importances that disagree between folds:",
+        "  there is no stable explanation to give, consistent with there being no signal.",
+        "",
+    ]
+
+
 def main() -> None:
     style()
     res_all = json.loads((OUT_DIR / "results.json").read_text(encoding="utf-8"))
     gate = pd.read_csv(OUT_DIR / "gate.csv")
     cam = pd.read_csv(OUT_DIR / "camera.csv")
+    dur = pd.read_csv(OUT_DIR / "duration.csv")
+    imp = pd.read_csv(OUT_DIR / "explain.csv")
+    stab = pd.read_csv(OUT_DIR / "explain_stability.csv")
+    oof = pd.read_parquet(OUT_DIR / "oof.parquet")
+    eprov = json.loads(
+        (OUT_DIR / "explain_provenance.json").read_text(encoding="utf-8")
+    )
     clin = json.loads((OUT_DIR / "clinical.json").read_text(encoding="utf-8"))
     rprov = json.loads(
         (OUT_DIR / "robustness_provenance.json").read_text(encoding="utf-8")
@@ -532,12 +801,14 @@ def main() -> None:
         "gate": fig_gate(gate),
         "tradeoff": fig_tradeoff(gate),
         "camera": fig_camera(cam, res_all["targets"]),
+        "duration": fig_duration(dur, res_all["targets"]),
+        "explain": fig_explain(imp),
         "clinical": fig_clinical(clin),
         "change": fig_change(clin),
     }
     now = dt.datetime.now().astimezone().isoformat(timespec="seconds")
     lines = [
-        "# Phase 3b — Quality gate, camera timing, clinical thresholds, within-person change",
+        "# Phase 3b — Robustness, clinical and explanation extensions",
         "",
         f"_Generated {now} by `python -m faceai.report03b` from saved artifacts only._",
         "",
@@ -546,23 +817,27 @@ def main() -> None:
         "",
         *gate_section(gate, figs),
         *camera_section(cam, figs),
+        *duration_section(dur, gate, figs),
         *clinical_section(clin, figs),
         *change_section(clin, figs),
-        "## 5. Provenance",
+        *explain_section(imp, stab, oof, figs),
+        "## 7. Provenance",
         "",
         *prov_lines(
             "CV results (`artifacts/cv/results.json`)", res_all["meta"]["provenance"]
         ),
         *prov_lines("Robustness (`artifacts/cv/*.csv`)", rprov),
         *prov_lines("Clinical (`artifacts/cv/clinical.json`)", clin["provenance"]),
+        *prov_lines("Explanations (`artifacts/cv/explain*.csv`)", eprov),
         "",
-        "## 6. Reproduce",
+        "## 8. Reproduce",
         "",
         "```",
-        "make features   # adds the three camera-timed feature tables",
+        "make features   # adds camera-timed and shortened-recording feature tables",
         "make cv",
-        "make robustness # adds camera.csv and gate.csv",
+        "make robustness # adds camera.csv, duration.csv and gate.csv",
         "make clinical",
+        "make explain",
         "make report03b",
         "```",
         "",
