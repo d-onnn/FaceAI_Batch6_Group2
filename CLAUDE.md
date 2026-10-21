@@ -190,3 +190,21 @@ Use `faceai.data.formats`; do not re-parse these by hand.
   pulse shape (stable across folds); arterial stiffness → heart rate first, so test that
   stiffness adds anything beyond heart rate before reporting it; HbA1c and cholesterol →
   near-zero, fold-unstable importances (no explanation to give).
+
+## Verified facts — 2026-10-21 (Phase 3c). Report: `reports/03c_standards.md`.
+
+- **The labels come from consumer or point-of-care devices** (paper §2.1, arXiv:2508.17924):
+  HbA1c and total cholesterol from an EasyTouch finger-prick analyser (glucose: EasyTouch 2);
+  SpO₂ from a Beurer PO 60 pulse oximeter (so the reference is SpO₂, not arterial SaO₂);
+  temperature from an unnamed non-contact thermometer; respiratory rate counted by a
+  physician over a minute; arterial stiffness from the Eldar photoplethysmograph or BPLab
+  Angio, **with no unit stated**. No label is the reference method an accuracy standard
+  assumes, so no result here can show that a standard is met.
+- **Accuracy standards, as checked:** NGSP manufacturer certification = 36 of 40 within
+  ±5 % of an NGSP reference lab (ngsp.org/critsumm.asp; since 2019). NCEP total cholesterol
+  bias ≤ 3 %, CV ≤ 3 % → 8.9 % total allowable error. FDA 2013 510(k) guidance: ARMS ≤ 3.0 %
+  typical (transmittance), citing ISO 80601-2-61 (4.0 % limit, ISO text not read). ARTERY
+  Society 2010 PWV: excellent ≤ 0.5 / SD ≤ 0.8 m/s, acceptable < 1.0 / SD ≤ 1.5. Heart-rate
+  standards (AAMI EC13, CTA-2065) are known from secondary sources only.
+- **On every standard the best model and the constant get the same verdict.** HbA1c and
+  cholesterol would need R² ≈ 0.95 on this cohort to meet NGSP/NCEP; ours ≤ 0.09.

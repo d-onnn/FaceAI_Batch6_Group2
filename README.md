@@ -30,8 +30,8 @@ Then, from the activated environment, every number and figure in `reports/` is r
 
 ```
 make splits    # Phase 2: subject-level splits (also committed in artifacts/)
-make test      # 68 tests, including the subject-leakage guard
-make phase3    # Phase 3 + 3b: features, 5-fold CV, overfitting, robustness, clinical, reports
+make test      # 75 tests, including the subject-leakage guard
+make phase3    # Phase 3, 3b, 3c: features, 5-fold CV, overfitting, robustness, clinical, standards, reports
 ```
 
 | Report | Contents |
@@ -41,9 +41,11 @@ make phase3    # Phase 3 + 3b: features, 5-fold CV, overfitting, robustness, cli
 | [`reports/02_splits.md`](reports/02_splits.md) | Subject-level splits and the leakage guarantee |
 | [`reports/03_cv_robustness.md`](reports/03_cv_robustness.md) | Contact-PPG 5-fold CV, overfitting diagnostics, robustness tests |
 | [`reports/03b_extensions.md`](reports/03b_extensions.md) | Quality gate, camera timing, clinical thresholds, within-person change |
+| [`reports/03c_standards.md`](reports/03c_standards.md) | Our errors against industry and clinical accuracy standards (NGSP, NCEP, ISO, ARTERY) |
 
 Binding project rules are in [`CLAUDE.md`](CLAUDE.md); the phase checklist is in
-[`PROGRESS.md`](PROGRESS.md).
+[`PROGRESS.md`](PROGRESS.md); every defect found so far, and the checks that now guard
+against it, are in [`DEBUGGING.md`](DEBUGGING.md).
 
 ---
 

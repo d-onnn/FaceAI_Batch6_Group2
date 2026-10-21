@@ -91,6 +91,20 @@ data, no video, test set untouched. Report: `reports/03b_extensions.md`; `make p
 - [x] Explanations with fold stability (`explain`): age ← pulse shape; stiffness ← heart
       rate first; HbA1c/cholesterol have none (MorphTwin). 68 tests green.
 
+### Phase 3c — accuracy standards and debugging log ✅ (2026-10-21)
+
+Requested by the FaceAI staff (Monday feedback). Evaluation only, same dev folds and
+models; test set untouched. Report: `reports/03c_standards.md`; `make standards report03c`.
+
+- [x] Each standard applied in its own form (`standards`): NGSP HbA1c 36/40 within ±5 %,
+      NCEP cholesterol 8.9 % total error, ISO/FDA SpO₂ ARMS, ARTERY Society PWV grades, plus
+      the RR and temperature tolerances. Best model and constant get the same verdict on
+      every one; HbA1c error is 3.1× and cholesterol 4.2× what the lab standards allow.
+- [x] Label devices recorded (paper §2.1): none is the reference a standard assumes.
+- [x] `DEBUGGING.md`: every defect found, how it was caught, and its guard. 75 tests green.
+- [ ] Not done: label-permutation control; fix the broken recording-length table header
+      in `reports/03b_extensions.md` (unescaped pipes).
+
 ## Phase 4 — rPPG extraction + signal quality (cached, resumable)
 DoD: `reports/04_rppg.md` with rPPG-vs-contact HR MAE by camera/state and SQI distributions; a
 resumable cache under `artifacts/rppg/` that re-runs without recomputing finished files.

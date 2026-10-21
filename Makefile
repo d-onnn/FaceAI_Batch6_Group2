@@ -6,7 +6,7 @@
 
 PYTHON ?= python
 
-.PHONY: help verify hardware probe lock test audit eda splits features cv diagnostics robustness clinical explain report03 report03b phase3
+.PHONY: help verify hardware probe lock test audit eda splits features cv diagnostics robustness clinical explain standards report03 report03b report03c phase3
 
 help:
 	@echo make verify   - environment verifier, webcam and face checks skipped
@@ -22,8 +22,10 @@ help:
 	@echo make robustness  - Phase 3 noise, shift, subgroups, stability, camera timing, gate
 	@echo make clinical    - Phase 3b clinical thresholds and within-person change
 	@echo make explain     - Phase 3b grouped permutation importance with fold stability
+	@echo make standards   - Phase 3c errors judged by each accuracy standard in its own form
 	@echo make report03 - Phase 3 report + figures from the saved artifacts
 	@echo make report03b - Phase 3b report: gate, timing, length, clinical, change, why
+	@echo make report03c - Phase 3c report: our errors against accuracy standards
 	@echo make phase3   - all of the Phase 3 steps above, in order
 	@echo make lock     - re-record exact installed versions - run after EVERY install
 
@@ -60,13 +62,19 @@ clinical:
 explain:
 	$(PYTHON) -m faceai.explain
 
+standards:
+	$(PYTHON) -m faceai.standards
+
 report03:
 	$(PYTHON) -m faceai.report03
 
 report03b:
 	$(PYTHON) -m faceai.report03b
 
-phase3: features cv diagnostics robustness clinical explain report03 report03b
+report03c:
+	$(PYTHON) -m faceai.report03c
+
+phase3: features cv diagnostics robustness clinical explain standards report03 report03b report03c
 
 hardware:
 	$(PYTHON) -m faceai.hardware
