@@ -208,3 +208,17 @@ Use `faceai.data.formats`; do not re-parse these by hand.
   standards (AAMI EC13, CTA-2065) are known from secondary sources only.
 - **On every standard the best model and the constant get the same verdict.** HbA1c and
   cholesterol would need R² ≈ 0.95 on this cohort to meet NGSP/NCEP; ours ≤ 0.09.
+
+## Verified facts — 2026-10-26 (Phase 3d). Report: `reports/03d_bias.md`.
+
+- **No systematic bias, strong proportional bias.** Mean errors are ≈ 0 (least-squares
+  fits), but the slope of error on the true value is −0.84 to −1.00 for every target
+  except age (−0.36): predictions stay near the cohort mean. Quote bias, limits of
+  agreement and this slope with any MAE.
+- **De-biasing cannot add signal.** Undoing the slope, fitted on training subjects only,
+  removes it but raises MAE wherever it applies; with no signal it cannot be applied at all.
+- **A correction that uses the test label is leakage.** Here it would show HbA1c MAE 0.073.
+  Check any "bias-corrected" benchmark (e.g. brain-age/vascular-age papers) for it before
+  comparing.
+- **SpO₂ is overestimated in subjects ≥ 25 (+0.72 points).** That is the risky direction for
+  oximetry.

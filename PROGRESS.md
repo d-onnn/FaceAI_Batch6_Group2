@@ -105,6 +105,23 @@ models; test set untouched. Report: `reports/03c_standards.md`; `make standards 
 - [ ] Not done: label-permutation control; fix the broken recording-length table header
       in `reports/03b_extensions.md` (unescaped pipes).
 
+### Phase 3d — bias and de-biasing ✅ (2026-10-26)
+
+Requested by Joshua after the staff's "de-bugging" feedback, which may have meant de-biasing.
+Evaluation only, same dev folds and models; test set untouched. Report: `reports/03d_bias.md`;
+`make bias report03d`.
+
+- [x] Systematic bias with Bland–Altman limits of agreement: none for any target (all 95 % CIs
+      contain zero).
+- [x] Proportional bias: best-model slopes −0.84 to −1.00 for all targets except age (−0.36).
+      Predictions follow 3–5 % of real HbA1c/cholesterol differences; top-10 % HbA1c is
+      1.04 points too low.
+- [x] Subgroup bias: HbA1c sex (+0.07 F / −0.15 M), SpO₂ overestimated +0.72 at age ≥ 25,
+      respiratory rate +1.0 rest / −1.0 post-exercise.
+- [x] De-biasing fitted on inner folds of the training subjects only: an offset changes
+      nothing; undoing the slope raises MAE wherever it applies (age 2.99 → 3.85). The
+      label-using correction (invalid) would show HbA1c 0.073: benchmark warning. 83 tests green.
+
 ## Phase 4 — rPPG extraction + signal quality (cached, resumable)
 DoD: `reports/04_rppg.md` with rPPG-vs-contact HR MAE by camera/state and SQI distributions; a
 resumable cache under `artifacts/rppg/` that re-runs without recomputing finished files.
