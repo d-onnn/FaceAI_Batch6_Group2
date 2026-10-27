@@ -122,6 +122,24 @@ Evaluation only, same dev folds and models; test set untouched. Report: `reports
       nothing; undoing the slope raises MAE wherever it applies (age 2.99 → 3.85). The
       label-using correction (invalid) would show HbA1c 0.073: benchmark warning. 83 tests green.
 
+### Phase 3e — surrogate-modelling lessons ✅ (2026-10-27)
+
+From the MoSPSyDe group's materials (Maaz Ahmad, *Basics of Surrogate Modeling*; K. Matsunami's
+PBM lecture and group slides). Evaluation only, same dev folds; test set untouched. Report:
+`reports/03e_surrogate_lessons.md`; `make graybox surrogate design report03e`.
+
+- [x] Gray-box PPG stiffness index (height / ΔT, Millasseau 2002): behaves physiologically,
+      but the dataset's stiffness label falls with age, follows heart rate and ignores SI.
+      Flag the label to the team before more stiffness modelling.
+- [x] Kriging, RBF-SVR, kNN, MLP through the same nested CV: no form finds signal for HbA1c,
+      cholesterol, SpO₂, stress or temperature; kNN gives age 2.73 (vs 3.00) but is worse ≥ 25.
+- [x] Kriging 95 % intervals: 83–95 % coverage overall, 39 % for the lowest SpO₂ and 40 % for
+      age ≥ 25; interval width does not track error except for age.
+- [x] Space-filling (Kennard–Stone) vs random subject choice: worse for training, better at
+      the extremes for HbA1c/stiffness. Proposed first video download: 48 subjects, 4.65 GB,
+      holding 18 of 44 older and 12 of 14 diabetes-range dev subjects (`reports/03e_pilot_download_order.csv`).
+- [x] Pareto front for age: halving older-people bias costs 0.26 years MAE. 92 tests green.
+
 ## Phase 4 — rPPG extraction + signal quality (cached, resumable)
 DoD: `reports/04_rppg.md` with rPPG-vs-contact HR MAE by camera/state and SQI distributions; a
 resumable cache under `artifacts/rppg/` that re-runs without recomputing finished files.

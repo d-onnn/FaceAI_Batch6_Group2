@@ -6,7 +6,7 @@
 
 PYTHON ?= python
 
-.PHONY: help verify hardware probe lock test audit eda splits features cv diagnostics robustness clinical explain standards bias report03 report03b report03c report03d phase3
+.PHONY: help verify hardware probe lock test audit eda splits features cv diagnostics robustness clinical explain standards bias graybox surrogate design report03 report03b report03c report03d report03e phase3
 
 help:
 	@echo make verify   - environment verifier, webcam and face checks skipped
@@ -24,10 +24,14 @@ help:
 	@echo make explain     - Phase 3b grouped permutation importance with fold stability
 	@echo make standards   - Phase 3c errors judged by each accuracy standard in its own form
 	@echo make bias        - Phase 3d bias, limits of agreement and de-biasing without test labels
+	@echo make graybox     - Phase 3e PPG stiffness index height/dT and the stiffness label
+	@echo make surrogate   - Phase 3e kriging, SVR, kNN, MLP, kriging intervals, age trade-off
+	@echo make design      - Phase 3e space-filling vs random subject choice, download order
 	@echo make report03 - Phase 3 report + figures from the saved artifacts
 	@echo make report03b - Phase 3b report: gate, timing, length, clinical, change, why
 	@echo make report03c - Phase 3c report: our errors against accuracy standards
 	@echo make report03d - Phase 3d report: bias in our errors and what de-biasing can do
+	@echo make report03e - Phase 3e report: surrogate-modelling lessons applied
 	@echo make phase3   - all of the Phase 3 steps above, in order
 	@echo make lock     - re-record exact installed versions - run after EVERY install
 
@@ -70,6 +74,15 @@ standards:
 bias:
 	$(PYTHON) -m faceai.bias
 
+graybox:
+	$(PYTHON) -m faceai.graybox
+
+surrogate:
+	$(PYTHON) -m faceai.surrogate
+
+design:
+	$(PYTHON) -m faceai.design
+
 report03:
 	$(PYTHON) -m faceai.report03
 
@@ -82,7 +95,10 @@ report03c:
 report03d:
 	$(PYTHON) -m faceai.report03d
 
-phase3: features cv diagnostics robustness clinical explain standards bias report03 report03b report03c report03d
+report03e:
+	$(PYTHON) -m faceai.report03e
+
+phase3: features cv diagnostics robustness clinical explain standards bias graybox surrogate design report03 report03b report03c report03d report03e
 
 hardware:
 	$(PYTHON) -m faceai.hardware

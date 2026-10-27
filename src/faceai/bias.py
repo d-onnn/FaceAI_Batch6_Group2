@@ -148,10 +148,14 @@ def _inner_fit(
 
 
 def debias(
-    t: pd.DataFrame, oof: pd.DataFrame, folds: pd.DataFrame, n_jobs: int = 12
+    t: pd.DataFrame,
+    oof: pd.DataFrame,
+    folds: pd.DataFrame,
+    n_jobs: int = 12,
+    targets: list[str] = TARGETS,
 ) -> pd.DataFrame:
     params = folds.set_index(["target", "model", "fold"])["best_params"]
-    jobs = [(tg, k, m) for tg in TARGETS for k in range(N_FOLDS) for m in FIT_MODELS]
+    jobs = [(tg, k, m) for tg in targets for k in range(N_FOLDS) for m in FIT_MODELS]
     fits = Parallel(n_jobs=n_jobs)(
         delayed(_inner_fit)(t, tg, k, m, json.loads(params[(tg, m, k)]))
         for tg, k, m in jobs

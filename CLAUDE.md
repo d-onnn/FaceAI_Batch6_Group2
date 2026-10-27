@@ -222,3 +222,19 @@ Use `faceai.data.formats`; do not re-parse these by hand.
   comparing.
 - **SpO₂ is overestimated in subjects ≥ 25 (+0.72 points).** That is the risky direction for
   oximetry.
+
+## Verified facts — 2026-10-27 (Phase 3e). Report: `reports/03e_surrogate_lessons.md`.
+
+- **The `rigidity` (arterial stiffness) label does not behave like arterial stiffness.** It
+  falls with age (ρ −0.12; ≥ 25 minus younger −1.47 [−1.96, −0.97]), rises with heart rate
+  (ρ +0.41) and is unrelated to the PPG stiffness index height/ΔT (ρ −0.01), which itself
+  behaves physiologically (ΔT +0.33 with height, SI +0.12 with age). The paper names two
+  possible devices (Eldar PPG or BPLab Angio) and no unit. Do not present stiffness results
+  as arterial stiffness until the dataset authors confirm what the label is.
+- **Model form is not the limit.** Kriging, SVR, kNN and an MLP find no signal for HbA1c,
+  cholesterol, SpO₂, stress or temperature. Kriging on noise-only targets is worse than the
+  constant.
+- **Input-based uncertainty cannot flag extreme people.** Kriging 95 % intervals cover 39 % of
+  the lowest SpO₂ sessions and 40 % of subjects ≥ 25.
+- **`height` is a db.csv column** (147–201 cm), unused by the Phase 3 models.
+- **The committed download-order list holds ids only** — never add health labels to it.
