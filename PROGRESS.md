@@ -132,8 +132,8 @@ PBM lecture and group slides). Evaluation only, same dev folds; test set untouch
       but the dataset's stiffness label falls with age, follows heart rate and ignores SI.
       Flag the label to the team before more stiffness modelling.
 - [x] Kriging, RBF-SVR, kNN, MLP through the same nested CV: no form finds signal for HbA1c,
-      cholesterol, SpO₂, stress or temperature; kNN gives age 2.73 (vs 3.00) but is worse ≥ 25.
-- [x] Kriging 95 % intervals: 83–95 % coverage overall, 39 % for the lowest SpO₂ and 40 % for
+      cholesterol, SpO₂, stress or temperature; kNN gives age 2.73 (vs 2.99) but is worse ≥ 25.
+- [x] Kriging 95 % intervals: 83–94 % coverage overall, 39 % for the lowest SpO₂ and 40 % for
       age ≥ 25; interval width does not track error except for age.
 - [x] Space-filling (Kennard–Stone) vs random subject choice: worse for training, better at
       the extremes for HbA1c/stiffness. Proposed first video download: 48 subjects, 4.65 GB,
