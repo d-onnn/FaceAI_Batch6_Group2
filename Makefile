@@ -6,7 +6,7 @@
 
 PYTHON ?= python
 
-.PHONY: help verify hardware probe lock test audit eda splits features cv diagnostics robustness clinical explain standards bias graybox surrogate design report03 report03b report03c report03d report03e phase3
+.PHONY: help verify hardware probe lock test audit eda splits features cv diagnostics robustness clinical explain standards bias graybox surrogate design report03 report03b report03c report03d report03e report03f phase3
 
 help:
 	@echo make verify   - environment verifier, webcam and face checks skipped
@@ -32,6 +32,7 @@ help:
 	@echo make report03c - Phase 3c report: our errors against accuracy standards
 	@echo make report03d - Phase 3d report: bias in our errors and what de-biasing can do
 	@echo make report03e - Phase 3e report: surrogate-modelling lessons applied
+	@echo make report03f - Phase 3f report: HbA1c predicted vs true and standard deviations
 	@echo make phase3   - all of the Phase 3 steps above, in order
 	@echo make lock     - re-record exact installed versions - run after EVERY install
 
@@ -98,7 +99,10 @@ report03d:
 report03e:
 	$(PYTHON) -m faceai.report03e
 
-phase3: features cv diagnostics robustness clinical explain standards bias graybox surrogate design report03 report03b report03c report03d report03e
+report03f:
+	$(PYTHON) -m faceai.report03f
+
+phase3: features cv diagnostics robustness clinical explain standards bias graybox surrogate design report03 report03b report03c report03d report03e report03f
 
 hardware:
 	$(PYTHON) -m faceai.hardware

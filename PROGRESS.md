@@ -140,6 +140,15 @@ PBM lecture and group slides). Evaluation only, same dev folds; test set untouch
       holding 18 of 44 older and 12 of 14 diabetes-range dev subjects (`reports/03e_pilot_download_order.csv`).
 - [x] Pareto front for age: halving older-people bias costs 0.26 years MAE. 92 tests green.
 
+### Phase 3f — HbA1c scatter and standard deviations ✅ (2026-11-02)
+
+Requested for the 2 Nov meeting. Same out-of-fold predictions, nothing refitted; test set untouched.
+Report: `reports/03f_hba1c.md`; `make report03f`.
+
+- [x] Predicted against true HbA1c (Lasso, 956 sessions): trend slope +0.05, no PPG prediction ≥ 6.5 %.
+- [x] SD with subject-bootstrap CIs: labels 0.72 %, PPG predictions 0.13–0.19 %, errors 0.69–0.70 %;
+      the PPG models shrink the spread by 3–5 %, R² = 1 − (error SD ÷ label SD)² ≤ 9.2 %. 93 tests green.
+
 ## Phase 4 — rPPG extraction + signal quality (cached, resumable)
 DoD: `reports/04_rppg.md` with rPPG-vs-contact HR MAE by camera/state and SQI distributions; a
 resumable cache under `artifacts/rppg/` that re-runs without recomputing finished files.
